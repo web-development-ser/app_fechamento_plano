@@ -13,6 +13,7 @@
   <nav class="nav">
     <a href="{{ url_for('atendimento.lista') }}" class="{{ 'ativo' if request.blueprint == 'atendimento' }}"><i data-lucide="list-checks"></i>Atendimento</a>
     <a href="{{ url_for('mapeamentos.pagina') }}" class="{{ 'ativo' if request.blueprint == 'mapeamentos' }}"><i data-lucide="map-pin"></i>Interrompidos</a>
+    <a href="{{ url_for('consulta.lista') }}" class="{{ 'ativo' if request.blueprint == 'consulta' }}"><i data-lucide="search"></i>Consulta</a>
     <a href="{{ url_for('importacao.pagina') }}" class="{{ 'ativo' if request.blueprint == 'importacao' }}"><i data-lucide="upload"></i>Importação</a>
     {% if g.user.perfil == 'ADMIN' %}
     <a href="{{ url_for('admin.usuarios') }}" class="{{ 'ativo' if request.blueprint == 'admin' }}"><i data-lucide="users"></i>Usuários</a>
@@ -25,6 +26,13 @@
       <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
       <button class="btn btn-link btn-sm" type="submit" title="Sair"><i data-lucide="log-out"></i></button>
     </form>
+  </div>
+</header>
+{% elif publico %}
+<header class="topbar">
+  <a class="brand" href="{{ url_for('consulta.lista') }}">TEGAD</a>
+  <div class="userbox">
+    <a class="btn btn-sm" href="{{ url_for('auth.login') }}"><i data-lucide="log-in"></i>Entrar</a>
   </div>
 </header>
 {% endif %}

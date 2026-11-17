@@ -72,6 +72,11 @@ Origem: `regras_iniciais/03. importação.md`
 
 ### Model — `app/models/importacao.py`
 - Lê `.xlsx` (1ª planilha) e `.csv` (`;` ou `,`, UTF-8 ou CP1252).
+- CSV exportado pelo Excel/TOTVS começa com a linha `sep=;`: o separador é lido dela e a linha descartada
+  (antes isso causava "Colunas obrigatórias ausentes"). Origem: `regras_iniciais/06`.
+- O `.xlsx` guarda números com no máximo 15 dígitos: Item com 16+ dígitos chega arredondado
+  (ex.: `…256` vira `…250`). Prévia e resumo avisam quantos itens estão nessa situação; **prefira o .csv**.
+  Importar o mesmo relatório em .xlsx e .csv gera itens diferentes (chaves diferentes).
 - Cabeçalhos normalizados (sem acento/espaço/ponto/caixa): `Prog.Orig.` ≡ `Prog. Orig.`.
 - Corrige mojibake exportado pelo TOTVS (`DescriÃ§Ã£o` → `Descrição`).
 - Colunas obrigatórias: Lote, Programa, Item, Descrição, Prog. Orig., Doc. Orig., Dt. Solic.,
@@ -109,24 +114,48 @@ Origem: `regras_iniciais/04. mapeamentos_e_ajustes.md`
   - 00:48:00 até 05:24:59: **Fora de turno** (turno vazio). [Assumido]
 - Vínculo (PROCV): `mapeamentos.programa = Prog. Orig.` e `mapeamentos.documento = Doc. Orig.`,
   comparados sem espaços e sem diferenciar maiúsculas. [Assumido: sem remover zeros à esquerda]
-- Duplicidade (índices únicos parciais, garantem também concorrência):
-  - uma vaga só tem um mapeamento ativo;
-  - um Programa + Documento só tem um mapeamento ativo (novo mapeamento permitido após liberar).
-- Liberação: grava `liberado_em`, `liberado_por` e `registro_id`; o histórico não é apagado.
+- **Capacidade da vaga (regra 06):** cada mapeamento ativo é **1 caixa** [Assumido]; uma vaga comporta até
+  **7 caixas** (programas diferentes). Vaga disponível = menos de 7 caixas ativas.
+  Garantido no banco por trigger com trava por vaga (migration 003) — vale também com acessos simultâneos.
+- Um Programa + Documento só tem um mapeamento ativo (índice único parcial; novo permitido após retirar).
+- **Saída da caixa (regra 06):** quando o item fica com status **Disponível ou Finalizado** e **todos** os demais
+  itens do mesmo Prog. Orig. + Doc. Orig. também estão Disponível/Finalizado [Assumido — no relatório real
+  12 pares Prog. Orig.+Doc. têm 2 ou 3 itens]. Agrupado, Barberan e 3DB mantêm a caixa na vaga.
+- Retirada: grava `liberado_em`, `liberado_por` e `registro_id`; o histórico não é apagado.
 
 ### View — `app/views/templates/mapeamentos/pagina.html` (menu "Interrompidos")
 - Mobile first: Programa/Documento em 2 colunas; vagas como botões grandes por fila (5 por linha no celular, 10 no tablet/desktop).
-- Só vagas livres são exibidas; contador de livres e turno atual no topo.
-- Lista de vagas reservadas (indica se o registro já está no atendimento ou aguarda importação) e últimas liberações.
+- Só vagas com espaço são exibidas, cada uma com a ocupação (ex.: `3/7`); topo mostra vagas com espaço, total de caixas e turno.
+- Lista "Caixas nas vagas" (indica se o registro já está no atendimento ou aguarda importação) e últimas caixas retiradas.
 
 ### Controller — `app/controllers/mapeamentos.py`
-- Valida campos; vaga ocupada ou Programa+Documento ativo duplicado → mensagem, nada gravado.
+- Valida campos; vaga lotada (7 caixas) ou Programa+Documento ativo duplicado → mensagem, nada gravado.
 - Auditoria `criar_mapeamento`; liberação automática via atendimento (`liberar_mapeamento`).
 - [Assumido] Liberação manual (corrigir reserva errada): somente ADMIN, auditada (`liberar_mapeamento_manual`).
-- [Assumido] A vaga é liberada quando o atendimento é salvo **com Status preenchido** (qualquer status);
-  salvar sem status grava Loc. TEGAD mas mantém a vaga reservada.
+- Atendimento salvo com Disponível/Finalizado mas com outros itens pendentes: caixa fica na vaga e a mensagem
+  informa quantos itens faltam. Salvar sem status grava Loc. TEGAD e mantém a caixa.
 - [Assumido] Atendimento sem mapeamento: exibe "Sem mapeamento" e pode ser salvo normalmente.
 - [Assumido] Mapeamento criado para um registro que já tinha status continua reservado até liberação manual.
+
+---
+
+## M5 — Consulta pública de itens
+Origem: `regras_iniciais/06. vagas_capacidade_e_consulta.md`
+
+### Model — `app/models/registro.py`
+- `SETORES` pelo prefixo do Equipto: **S7S – Serigrafia, S7M – Montagem, S7P – Pintura** (outros prefixos, ex.: S7B, aparecem como "—").
+- Filtro `setor` (prefixo) e filtro de situação `atendidos` (status preenchido); `resumo()` = total, atendidos, pendentes.
+
+### View — `app/views/templates/consulta/lista.html` (rota `/consulta/`, menu "Consulta")
+- **Sem login** (qualquer pessoa), somente leitura; cabeçalho próprio com botão "Entrar"; link na tela de login.
+- Destaque: badge **Pendente** (vermelho) ou **Atendido · <status>** (verde) e resumo com % atendido.
+- Filtros: os mesmos do Atendimento (Programa, Item; Documento, Equipamento, Data em "Mais filtros")
+  + **Setor** + Situação (Todos [padrão], Pendentes, Atendidos ou um status específico).
+- Mostra Item, Descrição, Programa, Prog. Orig., Doc., Setor, Equipto, Dt. Solic., Qtd., Loc. TEGAD, Recebido em.
+  [Assumido] Não exibe nomes de pessoas nem a narrativa. Cartões no celular, tabela no desktop.
+
+### Controller — `app/controllers/consulta.py`
+- Somente GET; reutiliza a leitura de filtros do Atendimento; valores inválidos são ignorados.
 
 ---
 
@@ -141,5 +170,8 @@ Origem: `regras_iniciais/04. mapeamentos_e_ajustes.md`
 | M4 Mapeamentos + integração atendimento | Concluído — testes de turno, vagas, reserva, concorrência, PROCV e liberação |
 | M3 Prévia de importação | Concluído — testes de prévia, confirmação, descarte, token |
 | M1 Redefinir senha (autoatendimento) | Concluído — 7 testes |
+| Regra 06: vagas com 7 caixas + saída por Disponível/Finalizado | Concluído — inclui teste de concorrência |
+| Regra 06: CSV com `sep=;` + aviso de precisão do .xlsx | Concluído — testado com o CSV real (66 linhas) |
+| M5 Consulta pública | Concluído — 4 testes |
 
-Total: 55 testes passando no PostgreSQL (2026-11-17). Pendente: validar os itens [Assumido] com a equipe de Fechamento.
+Total: 66 testes passando no PostgreSQL (2026-11-17). Pendente: validar os itens [Assumido] com a equipe de Fechamento.

@@ -21,8 +21,9 @@ def _validar(form):
         erros.append("Documento é obrigatório (máx. 50 caracteres).")
     if dados["vaga"] not in mapeamento_model.VAGAS:
         erros.append("Selecione uma vaga (Fila + Posição) válida.")
-    elif dados["vaga"] in mapeamento_model.vagas_ocupadas():
-        erros.append(f"A vaga {dados['vaga']} não está livre. Escolha outra.")
+    elif mapeamento_model.vaga_lotada(dados["vaga"]):
+        erros.append(f"A vaga {dados['vaga']} está lotada ({mapeamento_model.CAPACIDADE_VAGA} caixas). "
+                     "Escolha outra.")
     return dados, erros
 
 
@@ -43,7 +44,7 @@ def pagina():
                 db.rollback()
                 erros.append(str(exc))
             else:
-                flash(f"Vaga {gravado['vaga']} reservada para o Programa {gravado['programa']} / "
+                flash(f"Caixa adicionada à vaga {gravado['vaga']}: Programa {gravado['programa']} / "
                       f"Doc. {gravado['documento']} ({mapeamento_model.descrever_turno(gravado['turno'])}).",
                       "sucesso")
                 return redirect(url_for("mapeamentos.pagina"))
@@ -52,13 +53,17 @@ def pagina():
         status_http = 400
 
     momento = mapeamento_model.agora()
-    livres = mapeamento_model.vagas_livres()
+    ocup = mapeamento_model.ocupacao()
+    livres = mapeamento_model.vagas_livres(ocup)
     return render_template(
         "mapeamentos/pagina.html",
         dados=dados,
         livres_por_fila={f: [v for v in livres if v[0] == f] for f in mapeamento_model.FILAS},
         total_livres=len(livres),
         total_vagas=len(mapeamento_model.VAGAS),
+        ocupacao=ocup,
+        capacidade=mapeamento_model.CAPACIDADE_VAGA,
+        total_caixas=sum(ocup.values()),
         ativos=mapeamento_model.listar_ativos(),
         liberados=mapeamento_model.listar_liberados(),
         agora=momento,
@@ -75,5 +80,5 @@ def liberar(mapeamento_id):
         abort(404)
     auditoria.registrar("liberar_mapeamento_manual", "mapeamentos", mapeamento_id)
     db.commit()
-    flash("Vaga liberada manualmente.", "sucesso")
+    flash("Caixa retirada da vaga manualmente.", "sucesso")
     return redirect(url_for("mapeamentos.pagina"))

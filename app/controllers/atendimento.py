@@ -17,11 +17,12 @@ CAMPOS_FORM = ("dt_recebimento", "resp_ts7", "narrativa", "status")
 CAMPOS_ATENDIMENTO = CAMPOS_FORM + ("loc_tegad",)
 
 
-def ler_filtros(args):
+def ler_filtros(args, status_padrao=""):
     filtros = {k: args.get(k, "").strip()[:60] for k in FILTROS_TEXTO}
-    filtros["status"] = args.get("status", "")
-    if filtros["status"] not in ("", "todos", *registro_model.STATUS_OPCOES):
-        filtros["status"] = ""
+    filtros["status"] = args.get("status", status_padrao)
+    if filtros["status"] not in ("", "todos", "atendidos", *registro_model.STATUS_OPCOES):
+        filtros["status"] = status_padrao
+    filtros["setor"] = args.get("setor", "") if args.get("setor", "") in registro_model.SETORES else ""
     dt = args.get("dt_solic", "").strip()
     try:
         filtros["dt_solic"] = date.fromisoformat(dt) if dt else None
@@ -93,7 +94,15 @@ def editar(registro_id):
                 flash(e, "erro")
             registro = {**registro, **dados}
         else:
-            liberar = mapeamento is not None and dados["status"] is not None
+            # a caixa sai da vaga quando este item fica Disponível/Finalizado e nenhum outro item
+            # do mesmo Prog. Orig. + Doc. Orig. continua pendente
+            liberar = False
+            pendentes = 0
+            if mapeamento is not None and mapeamento_model.status_libera(dados["status"]):
+                pendentes = registro_model.contar_pendentes(
+                    registro["prog_orig"], registro["doc_orig"],
+                    mapeamento_model.STATUS_LIBERAM, ignorar_id=registro_id)
+                liberar = pendentes == 0
             try:
                 registro_model.salvar_atendimento(registro_id, dados, g.user)
                 antes = {k: registro[k] for k in CAMPOS_ATENDIMENTO}
@@ -115,7 +124,10 @@ def editar(registro_id):
             else:
                 msg = "Atendimento salvo com sucesso."
                 if liberar:
-                    msg += f" Vaga {mapeamento['vaga']} liberada."
+                    msg += f" Caixa retirada da vaga {mapeamento['vaga']}."
+                elif pendentes:
+                    msg += (f" A caixa continua na vaga {mapeamento['vaga']}: {pendentes} item(ns) do mesmo"
+                            " programa/documento ainda pendente(s).")
                 flash(msg, "sucesso")
                 return redirect(url_for("atendimento.editar", registro_id=registro_id, voltar=voltar))
 

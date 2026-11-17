@@ -40,7 +40,8 @@
     {% endif %}
   </div>
   {% if not mapeamento.liberado_em %}
-  <p class="sub" style="margin:8px 0 0">A vaga será liberada automaticamente ao salvar o atendimento com um Status.</p>
+  <p class="sub" style="margin:8px 0 0">A caixa sai da vaga automaticamente quando todos os itens deste
+    programa/documento estiverem com status Disponível ou Finalizado.</p>
   {% endif %}
   {% else %}
   <p class="sub" style="margin:0">Nenhum mapeamento encontrado para Prog. Orig. {{ r.prog_orig }} / Doc. {{ r.doc_orig }}. O atendimento pode ser salvo normalmente.</p>

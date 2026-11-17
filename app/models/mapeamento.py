@@ -9,6 +9,8 @@ from app import db
 FUSO = ZoneInfo("America/Sao_Paulo")
 FILAS = ("M", "P", "S")
 VAGAS = tuple(f"{fila}{n:02d}" for fila in FILAS for n in range(1, 21))
+CAPACIDADE_VAGA = 7  # caixas (mapeamentos ativos) por vaga — também garantido no banco (migration 003)
+STATUS_LIBERAM = ("Disponível", "Finalizado")  # status do item que tiram a caixa da vaga
 
 INICIO_T1 = time(5, 25)   # 1º turno: 05:25:00 – 15:14:59
 INICIO_T2 = time(15, 15)  # 2º turno: 15:15:00 – 00:47:59 (atravessa a meia-noite)
@@ -46,18 +48,29 @@ def agora():
     return datetime.now(FUSO)
 
 
-def vagas_ocupadas():
-    rows = db.query("SELECT vaga FROM mapeamentos WHERE liberado_em IS NULL")
-    return {r["vaga"] for r in rows}
+def ocupacao():
+    """{vaga: nº de caixas ativas}."""
+    rows = db.query(
+        "SELECT vaga, count(*) AS n FROM mapeamentos WHERE liberado_em IS NULL GROUP BY vaga")
+    return {r["vaga"]: r["n"] for r in rows}
 
 
-def vagas_livres():
-    ocupadas = vagas_ocupadas()
-    return [v for v in VAGAS if v not in ocupadas]
+def vagas_livres(ocup=None):
+    """Vagas com menos de 7 caixas."""
+    ocup = ocupacao() if ocup is None else ocup
+    return [v for v in VAGAS if ocup.get(v, 0) < CAPACIDADE_VAGA]
+
+
+def vaga_lotada(vaga):
+    return ocupacao().get(vaga, 0) >= CAPACIDADE_VAGA
+
+
+def status_libera(status):
+    return status in STATUS_LIBERAM
 
 
 def criar(programa, documento, vaga, usuario, momento=None):
-    """Reserva a vaga. Concorrência garantida pelos índices únicos parciais."""
+    """Adiciona uma caixa à vaga. Capacidade e duplicidade garantidas no banco (trigger + índice único)."""
     momento = momento or agora()
     params = {
         "programa": normalizar_chave(programa),
@@ -77,9 +90,12 @@ def criar(programa, documento, vaga, usuario, momento=None):
                 " %(turno)s, %(em)s, %(por)s, %(nome)s) RETURNING id",
                 params,
             )
-    except psycopg.errors.UniqueViolation as exc:
-        if exc.diag.constraint_name == "ux_mapeamentos_vaga_ativa":
-            raise VagaIndisponivel(f"A vaga {vaga} acabou de ser ocupada. Escolha outra.") from None
+    except psycopg.errors.CheckViolation as exc:
+        if exc.diag.message_primary == "VAGA_LOTADA":
+            raise VagaIndisponivel(
+                f"A vaga {vaga} está lotada ({CAPACIDADE_VAGA} caixas). Escolha outra.") from None
+        raise
+    except psycopg.errors.UniqueViolation:
         raise MapeamentoDuplicado(
             f"Já existe mapeamento ativo para o Programa {params['programa']} / "
             f"Documento {params['documento']}."

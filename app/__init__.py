@@ -24,13 +24,14 @@ def create_app(overrides=None):
     app.before_request(load_current_user)
     app.jinja_env.globals["csrf_token"] = csrf_token
 
-    from app.controllers import admin, atendimento, auth, importacao, mapeamentos
+    from app.controllers import admin, atendimento, auth, consulta, importacao, mapeamentos
 
     app.register_blueprint(auth.bp)
     app.register_blueprint(admin.bp)
     app.register_blueprint(atendimento.bp)
     app.register_blueprint(importacao.bp)
     app.register_blueprint(mapeamentos.bp)
+    app.register_blueprint(consulta.bp)
 
     @app.errorhandler(400)
     @app.errorhandler(403)

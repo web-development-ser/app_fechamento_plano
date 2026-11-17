@@ -43,13 +43,23 @@ def test_cadastro_preenche_campos_automaticos_e_reserva_vaga(app, admin_client):
         assert mp["turno"] == m.turno_de(mp["registrado_em"].astimezone(m.FUSO))
         assert db.query_one("SELECT count(*) n FROM auditoria WHERE acao='criar_mapeamento'")["n"] == 1
     html = admin_client.get("/mapeamentos/").get_data(as_text=True)
-    assert 'value="M01"' not in html and 'value="M02"' in html  # só vagas livres
+    assert 'value="M01"' in html and "1/7" in html  # vaga continua disponível (1 de 7 caixas)
 
 
-def test_vaga_ocupada_e_programa_documento_duplicado_bloqueados(app, admin_client):
+def test_vaga_comporta_ate_7_caixas(app, admin_client):
+    for i in range(7):
+        assert _mapear(admin_client, f"10{i}", "1", "P05").status_code == 302
+    html = admin_client.get("/mapeamentos/").get_data(as_text=True)
+    assert 'value="P05"' not in html and 'value="P06"' in html  # lotada some da seleção
+    r = _mapear(admin_client, "200", "2", "P05")
+    assert r.status_code == 400 and "lotada (7 caixas)" in r.get_data(as_text=True)
+    from app import db
+    with app.app_context():
+        assert db.query_one("SELECT count(*) n FROM mapeamentos WHERE vaga='P05'")["n"] == 7
+
+
+def test_validacoes_e_programa_documento_duplicado(app, admin_client):
     _mapear(admin_client, "1", "1", "P05")
-    r = _mapear(admin_client, "2", "2", "P05")
-    assert r.status_code == 400 and "não está livre" in r.get_data(as_text=True)
     r = _mapear(admin_client, "1", "1", "P06")
     assert r.status_code == 400 and "Já existe mapeamento ativo" in r.get_data(as_text=True)
     r = _mapear(admin_client, "3", "3", "X01")
@@ -58,16 +68,51 @@ def test_vaga_ocupada_e_programa_documento_duplicado_bloqueados(app, admin_clien
     assert "Programa é obrigatório" in r.get_data(as_text=True)
 
 
-def test_indice_unico_impede_reserva_dupla_concorrente(app):
-    """Mesmo que a checagem da tela passe, o banco impede duas reservas da mesma vaga."""
+def test_banco_impede_oitava_caixa_mesmo_sem_validacao_da_tela(app):
+    """A trigger da migration 003 garante o limite mesmo se a checagem da tela for contornada."""
     criar_usuario(app)
     from app import db
     user = {"id": 1, "nome": "Admin"}
     with app.app_context():
-        m.criar("10", "1", "S20", user)
+        for i in range(7):
+            m.criar(f"1{i}", "1", "S20", user)
         db.commit()
         with pytest.raises(m.VagaIndisponivel):
-            m.criar("11", "1", "S20", user)
+            m.criar("99", "1", "S20", user)
+
+
+def test_limite_de_7_com_acessos_simultaneos(app):
+    """Duas conexões tentando a 7ª caixa ao mesmo tempo: só uma entra."""
+    import threading
+
+    from app.db import connect
+    criar_usuario(app)
+    user = {"id": 1, "nome": "Admin"}
+    from app import db
+    with app.app_context():
+        for i in range(6):
+            m.criar(f"5{i}", "1", "M20", user)
+        db.commit()
+
+    dsn = app.config["DATABASE_URL"]
+    resultados, barreira = [], threading.Barrier(2)
+
+    def tentar(prog):
+        with connect(dsn) as conn:
+            barreira.wait()
+            try:
+                conn.execute(
+                    "INSERT INTO mapeamentos (programa, documento, vaga, registrado_por, usuario_nome)"
+                    " VALUES (%s, '1', 'M20', 1, 'Admin')", (prog,))
+                conn.commit()
+                resultados.append("ok")
+            except Exception as exc:  # noqa: BLE001
+                resultados.append(type(exc).__name__)
+
+    ts = [threading.Thread(target=tentar, args=(p,)) for p in ("A1", "A2")]
+    [t.start() for t in ts]
+    [t.join() for t in ts]
+    assert sorted(resultados) == ["CheckViolation", "ok"]
 
 
 def test_atendimento_localiza_mapeamento_e_libera_vaga(app, admin_client):
@@ -91,7 +136,7 @@ def test_atendimento_localiza_mapeamento_e_libera_vaga(app, admin_client):
     # salvar com status libera a vaga
     r = admin_client.post("/atendimento/1", data={"_csrf": token, "status": "Disponível", "loc_tegad": "S01"},
                           follow_redirects=True)
-    assert "Vaga M07 liberada" in r.get_data(as_text=True)
+    assert "Caixa retirada da vaga M07" in r.get_data(as_text=True)
     with app.app_context():
         mp = db.query_one("SELECT * FROM mapeamentos")
         assert mp["liberado_em"] is not None and mp["registro_id"] == 1 and mp["liberado_por"] == 1
@@ -116,3 +161,33 @@ def test_liberacao_manual_somente_admin(app, client):
     login(client, "ana", "segredo1")
     assert _mapear(client, "1", "1", "M01").status_code == 302  # usuário comum cadastra
     assert client.post("/mapeamentos/1/liberar", data={"_csrf": csrf(client)}).status_code == 403
+
+
+def test_status_que_nao_liberam_mantem_a_caixa(app, admin_client):
+    _importar(admin_client, _xlsx([CAB, _linha(1, "SKU1", orig=777, doc=1)]))
+    _mapear(admin_client, "777", "1", "S03")
+    token = csrf(admin_client)
+    for status in ("Agrupado", "Barberan", "3DB"):
+        admin_client.post("/atendimento/1", data={"_csrf": token, "status": status})
+    from app import db
+    with app.app_context():
+        assert db.query_one("SELECT liberado_em FROM mapeamentos")["liberado_em"] is None
+    r = admin_client.post("/atendimento/1", data={"_csrf": token, "status": "Finalizado"}, follow_redirects=True)
+    assert "Caixa retirada da vaga S03" in r.get_data(as_text=True)
+
+
+def test_caixa_so_sai_quando_todos_os_itens_do_programa_concluidos(app, admin_client):
+    # dois itens com o mesmo Prog. Orig. + Doc. (caso real do relatório TOTVS)
+    _importar(admin_client, _xlsx([CAB, _linha(1, "SKU1", orig=310715, doc=4), _linha(1, "SKU2", orig=310715, doc=4)]))
+    _mapear(admin_client, "310715", "4", "M02")
+    token = csrf(admin_client)
+    r = admin_client.post("/atendimento/1", data={"_csrf": token, "status": "Disponível"}, follow_redirects=True)
+    assert "1 item(ns) do mesmo programa/documento ainda pendente(s)" in r.get_data(as_text=True)
+    from app import db
+    with app.app_context():
+        assert db.query_one("SELECT liberado_em FROM mapeamentos")["liberado_em"] is None
+    r = admin_client.post("/atendimento/2", data={"_csrf": token, "status": "Finalizado"}, follow_redirects=True)
+    assert "Caixa retirada da vaga M02" in r.get_data(as_text=True)
+    with app.app_context():
+        mp = db.query_one("SELECT * FROM mapeamentos")
+        assert mp["liberado_em"] is not None and mp["registro_id"] == 2

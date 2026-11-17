@@ -103,3 +103,30 @@ def test_planilha_real_do_totvs_e_valida():
     regs = [svc.converter_linha(l, mapa) for l in linhas[1:]]
     assert len(regs) == len(linhas) - 1 > 0
     assert all(r["programa"] and r["item"] for r in regs)
+
+
+CSV_REAL = AMOSTRA.with_suffix(".csv")
+
+
+def test_csv_com_linha_sep_do_excel():
+    conteudo = ("sep=;\n" + ";".join(CAB) + "\n1;10;2729104140920256;Desc;20;3;13/11/2026;5;762;Qtd;S7S02;Ana\n").encode("utf-8")
+    linhas = svc.ler_arquivo("r.csv", conteudo)
+    reg = svc.converter_linha(linhas[1], svc.mapear_cabecalho(linhas[0]))
+    assert reg["item"] == "2729104140920256"  # CSV preserva todos os dígitos
+
+
+def test_aviso_precisao_item_numerico_do_excel():
+    mapa = svc.mapear_cabecalho(CAB)
+    base = [1, 10, None, "d", 20, 3, None, 1, None, None, None, None]
+    assert svc.item_pode_ter_perdido_precisao([*base[:2], 2729104140920250, *base[3:]], mapa)
+    assert not svc.item_pode_ter_perdido_precisao([*base[:2], "2729104140920256", *base[3:]], mapa)
+    assert not svc.item_pode_ter_perdido_precisao([*base[:2], 123456, *base[3:]], mapa)
+
+
+@pytest.mark.skipif(not CSV_REAL.exists(), reason="CSV de amostra ausente")
+def test_csv_real_do_totvs_e_valido():
+    linhas = svc.ler_arquivo(CSV_REAL.name, CSV_REAL.read_bytes())
+    mapa = svc.mapear_cabecalho(linhas[0])
+    regs = [svc.converter_linha(l, mapa) for l in linhas[1:]]
+    assert len(regs) == 66
+    assert regs[0]["item"] == "2729104140920256" and regs[0]["descricao"].startswith("FORQ")

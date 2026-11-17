@@ -64,6 +64,7 @@ class Resultado:
     existentes: int = 0
     erros: list = field(default_factory=list)  # [(linha, mensagem)]
     importacao_id: int | None = None
+    avisos_precisao: int = 0
 
     @property
     def sucesso(self):
@@ -95,8 +96,15 @@ def _ler_csv(conteudo):
             continue
     else:
         raise ArquivoInvalido("Codificação do CSV não reconhecida.")
-    primeira = texto.splitlines()[0] if texto else ""
-    delim = ";" if primeira.count(";") >= primeira.count(",") else ","
+    linhas_texto = texto.splitlines()
+    primeira = linhas_texto[0].strip() if linhas_texto else ""
+    # Excel/TOTVS gravam "sep=;" na 1ª linha como dica de separador: usa e descarta
+    dica = re.fullmatch(r"sep=(.)", primeira, flags=re.IGNORECASE)
+    if dica:
+        delim = dica.group(1)
+        texto = "\n".join(linhas_texto[1:])
+    else:
+        delim = ";" if primeira.count(";") >= primeira.count(",") else ","
     return [row for row in csv.reader(io.StringIO(texto), delimiter=delim)]
 
 
@@ -172,6 +180,17 @@ def quantidade(valor):
         raise ValueError(f"quantidade inválida '{valor}'") from None
 
 
+LIMITE_PRECISAO_EXCEL = 10 ** 15  # Excel guarda no máximo 15 dígitos significativos
+
+
+def item_pode_ter_perdido_precisao(linha, mapa):
+    """Item numérico com 16+ dígitos vindo do .xlsx: o Excel já arredondou o último dígito."""
+    i = mapa["item"]
+    valor = linha[i] if i < len(linha) else None
+    return (isinstance(valor, (int, float)) and not isinstance(valor, bool)
+            and abs(valor) >= LIMITE_PRECISAO_EXCEL)
+
+
 def converter_linha(linha, mapa):
     def cel(col):
         i = mapa[col]
@@ -221,6 +240,8 @@ def importar(nome_arquivo, conteudo, usuario):
     conn = db.get_conn()
     for n, linha in enumerate(linhas[1:], start=2):  # n = linha no arquivo
         res.total += 1
+        if item_pode_ter_perdido_precisao(linha, mapa):
+            res.avisos_precisao += 1
         try:
             reg = converter_linha(linha, mapa)
         except ValueError as exc:
@@ -261,6 +282,7 @@ class Previa:
     existentes: int = 0
     erros: int = 0
     linhas: list = field(default_factory=list)  # [{"n", "reg", "situacao", "msg"}]
+    avisos_precisao: int = 0
     token: str | None = None  # arquivo guardado para confirmação
 
     @property
@@ -289,6 +311,8 @@ def analisar(nome_arquivo, conteudo):
     convertidas = []
     for n, linha in enumerate(linhas[1:], start=2):
         previa.total += 1
+        if item_pode_ter_perdido_precisao(linha, mapa):
+            previa.avisos_precisao += 1
         try:
             convertidas.append((n, converter_linha(linha, mapa), None))
         except ValueError as exc:

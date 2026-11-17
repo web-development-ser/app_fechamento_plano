@@ -5,7 +5,7 @@
 <div class="page-head">
   <div>
     <h1>Programas interrompidos</h1>
-    <p class="sub">{{ total_livres }} de {{ total_vagas }} vagas livres · {{ turno_atual }}</p>
+    <p class="sub">{{ total_livres }} de {{ total_vagas }} vagas com espaço · {{ total_caixas }} caixas · {{ turno_atual }}</p>
   </div>
 </div>
 
@@ -19,18 +19,19 @@
       <input id="documento" name="documento" value="{{ dados.documento }}" required maxlength="50" inputmode="numeric"></div>
   </div>
 
-  <label style="margin-top:12px">Fila + Posição (somente vagas livres)</label>
+  <label style="margin-top:12px">Fila + Posição (vagas com menos de {{ capacidade }} caixas)</label>
   {% if total_livres == 0 %}
-    <div class="flash aviso"><i data-lucide="circle-alert"></i>Nenhuma vaga livre no momento.</div>
+    <div class="flash aviso"><i data-lucide="circle-alert"></i>Todas as vagas estão lotadas no momento.</div>
   {% endif %}
   {% for fila, vagas in livres_por_fila.items() %}
   <fieldset class="vagas">
-    <legend>Fila {{ fila }} <span class="muted">({{ vagas|length }} livres)</span></legend>
+    <legend>Fila {{ fila }} <span class="muted">({{ vagas|length }} com espaço)</span></legend>
     <div class="vagas-grid">
       {% for v in vagas %}
-      <label class="vaga"><input type="radio" name="vaga" value="{{ v }}" required {{ 'checked' if dados.vaga == v }}><span>{{ v }}</span></label>
+      {% set n = ocupacao.get(v, 0) %}
+      <label class="vaga"><input type="radio" name="vaga" value="{{ v }}" required {{ 'checked' if dados.vaga == v }}><span>{{ v }}<small class="{{ 'ocup' if n }}">{{ n }}/{{ capacidade }}</small></span></label>
       {% else %}
-      <span class="muted">Sem vagas livres.</span>
+      <span class="muted">Todas lotadas.</span>
       {% endfor %}
     </div>
   </fieldset>
@@ -38,18 +39,18 @@
 
   <p class="sub" style="margin:10px 0 0"><i data-lucide="info"></i> Data/hora, turno e usuário ({{ g.user.nome }}) são registrados automaticamente.</p>
   <div class="actions" style="margin-top:10px">
-    <button class="btn btn-primary" type="submit" {{ 'disabled' if total_livres == 0 }}><i data-lucide="map-pin"></i>Reservar vaga</button>
+    <button class="btn btn-primary" type="submit" {{ 'disabled' if total_livres == 0 }}><i data-lucide="package-plus"></i>Adicionar caixa</button>
   </div>
 </form>
 
 <section class="panel">
-  <h2>Vagas reservadas ({{ ativos|length }})</h2>
-  {% if not ativos %}<p class="empty">Nenhuma vaga reservada.</p>{% endif %}
+  <h2>Caixas nas vagas ({{ ativos|length }})</h2>
+  {% if not ativos %}<p class="empty">Nenhuma caixa nas vagas.</p>{% endif %}
   <div class="cards" style="display:grid">
     {% for m in ativos %}
     <div class="card">
       <div class="card-top">
-        <strong>{{ m.vaga }}</strong>
+        <strong>{{ m.vaga }} <span class="muted" style="font-weight:400;font-size:12px">{{ ocupacao.get(m.vaga, 0) }}/{{ capacidade }}</span></strong>
         {% if m.tem_registro %}<span class="badge azul">No atendimento</span>
         {% else %}<span class="badge">Aguardando importação</span>{% endif %}
       </div>
@@ -61,9 +62,9 @@
       </div>
       {% if g.user.perfil == 'ADMIN' %}
       <form method="post" action="{{ url_for('mapeamentos.liberar', mapeamento_id=m.id) }}"
-            data-confirm="Liberar manualmente a vaga {{ m.vaga }}?">
+            data-confirm="Retirar manualmente esta caixa da vaga {{ m.vaga }}?">
         <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-        <button class="btn btn-sm" type="submit"><i data-lucide="unlock"></i>Liberar vaga</button>
+        <button class="btn btn-sm" type="submit"><i data-lucide="unlock"></i>Retirar caixa</button>
       </form>
       {% endif %}
     </div>
@@ -73,14 +74,14 @@
 
 {% if liberados %}
 <details class="panel mais">
-  <summary>Últimas liberações ({{ liberados|length }})</summary>
+  <summary>Últimas caixas retiradas ({{ liberados|length }})</summary>
   <div class="cards" style="display:grid">
     {% for m in liberados %}
     <div class="card">
-      <div class="card-top"><strong>{{ m.vaga }}</strong><span class="badge verde">Liberada</span></div>
+      <div class="card-top"><strong>{{ m.vaga }}</strong><span class="badge verde">Retirada</span></div>
       <div class="kv">
         <div><span>Programa / Doc.</span>{{ m.programa }} / {{ m.documento }}</div>
-        <div><span>Liberada em</span>{{ dt(m.liberado_em) }}</div>
+        <div><span>Retirada em</span>{{ dt(m.liberado_em) }}</div>
       </div>
     </div>
     {% endfor %}

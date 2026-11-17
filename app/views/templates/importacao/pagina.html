@@ -38,6 +38,11 @@
     <div class="stat"><b>{{ previa.existentes }}</b><span>Já existentes (ignoradas)</span></div>
     <div class="stat"><b>{{ previa.erros }}</b><span>Com erro</span></div>
   </div>
+  {% if previa.avisos_precisao %}
+  <div class="flash aviso" style="margin-top:10px"><i data-lucide="triangle-alert"></i>
+    {{ previa.avisos_precisao }} item(ns) com 16+ dígitos vieram como número do Excel e podem ter o último dígito
+    arredondado (ex.: …256 vira …250). Prefira exportar o relatório em .csv.</div>
+  {% endif %}
 
   {% set linhas = previa.linhas[:limite_previa] %}
   <div class="prev-scroll" style="margin-top:10px">
@@ -101,6 +106,11 @@
     <div class="stat"><b>{{ resultado.existentes }}</b><span>Já existentes</span></div>
     <div class="stat"><b>{{ resultado.erros|length }}</b><span>Com erro</span></div>
   </div>
+  {% if resultado.avisos_precisao %}
+  <div class="flash aviso" style="margin-top:10px"><i data-lucide="triangle-alert"></i>
+    {{ resultado.avisos_precisao }} item(ns) com 16+ dígitos vieram como número do Excel e podem ter o último dígito
+    arredondado (ex.: …256 vira …250). Prefira exportar o relatório em .csv.</div>
+  {% endif %}
   {% if resultado.erros %}
   <details class="mais" style="margin-top:10px" open>
     <summary>Ver erros ({{ resultado.erros|length }})</summary>
