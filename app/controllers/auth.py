@@ -62,3 +62,46 @@ def logout():
     session.clear()
     flash("Sessão encerrada.", "sucesso")
     return redirect(url_for("auth.login"))
+
+
+@bp.route("/senha", methods=["GET", "POST"])
+def redefinir_senha():
+    """Autoatendimento: troca a senha validando usuário + senha atual. Acessível com ou sem login."""
+    usuario = g.user["usuario"] if g.get("user") else ""
+    if request.method == "POST":
+        usuario = request.form.get("usuario", "").strip()
+        atual = request.form.get("senha_atual", "")
+        nova = request.form.get("nova_senha", "")
+        confirmacao = request.form.get("confirmacao", "")
+
+        erros = []
+        if not usuario:
+            erros.append("Informe o usuário.")
+        if not atual:
+            erros.append("Informe a senha atual.")
+        if not nova:
+            erros.append("Informe a nova senha.")
+        if not erros:
+            user, erro = usuario_model.autenticar(usuario, atual)
+            if user is None:
+                erros.append("Usuário ou senha atual inválidos. A senha não foi alterada."
+                             if "inativo" not in erro else erro)
+            else:
+                erro_nova = usuario_model.validar_nova_senha(nova, confirmacao)
+                if erro_nova:
+                    erros.append(erro_nova)
+                elif nova == atual:
+                    erros.append("A nova senha deve ser diferente da senha atual.")
+        if erros:
+            for e in erros:
+                flash(e, "erro")
+            return render_template("senha.html", usuario=usuario), 400
+
+        usuario_model.redefinir_senha(user["id"], nova, user["id"])
+        auditoria.registrar("alterar_propria_senha", "usuarios", user["id"], usuario=user)
+        db.commit()
+        flash("Senha alterada com sucesso. Use a nova senha nos próximos acessos.", "sucesso")
+        if g.get("user") and g.user["id"] == user["id"]:
+            return redirect(url_for("atendimento.lista"))
+        return redirect(url_for("auth.login"))
+    return render_template("senha.html", usuario=usuario)

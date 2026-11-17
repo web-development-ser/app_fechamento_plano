@@ -4,6 +4,16 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from app import db
 
 PERFIS = ("ADMIN", "USUARIO")
+SENHA_MIN = 6
+
+
+def validar_nova_senha(senha, confirmacao):
+    """Política de senha única para admin e autoatendimento. Retorna mensagem de erro ou None."""
+    if len(senha or "") < SENHA_MIN:
+        return f"A nova senha deve ter ao menos {SENHA_MIN} caracteres."
+    if senha != confirmacao:
+        return "A confirmação não confere com a nova senha."
+    return None
 _CAMPOS = "id, nome, usuario, perfil, ativo, criado_em, atualizado_em"
 
 

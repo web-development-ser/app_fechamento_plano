@@ -252,6 +252,108 @@ def importar(nome_arquivo, conteudo, usuario):
     return res
 
 
+# ---------- pré-visualização (não grava nada) ----------
+
+@dataclass
+class Previa:
+    total: int = 0
+    novos: int = 0
+    existentes: int = 0
+    erros: int = 0
+    linhas: list = field(default_factory=list)  # [{"n", "reg", "situacao", "msg"}]
+    token: str | None = None  # arquivo guardado para confirmação
+
+    @property
+    def importaveis(self):
+        return self.novos > 0
+
+
+def _chaves_existentes(chaves):
+    if not chaves:
+        return set()
+    colunas = list(zip(*chaves))
+    rows = db.query(
+        "SELECT programa, item, prog_orig, doc_orig FROM agrupamento_registro"
+        " WHERE (programa, item, prog_orig, doc_orig) IN"
+        " (SELECT * FROM unnest(%s::text[], %s::text[], %s::text[], %s::text[]))",
+        [list(c) for c in colunas],
+    )
+    return {(r["programa"], r["item"], r["prog_orig"], r["doc_orig"]) for r in rows}
+
+
+def analisar(nome_arquivo, conteudo):
+    """Classifica cada linha (Novo / Já existe / Erro) sem gravar. Mesmas regras de importar()."""
+    linhas = ler_arquivo(nome_arquivo, conteudo)
+    mapa = mapear_cabecalho(linhas[0])
+    previa = Previa()
+    convertidas = []
+    for n, linha in enumerate(linhas[1:], start=2):
+        previa.total += 1
+        try:
+            convertidas.append((n, converter_linha(linha, mapa), None))
+        except ValueError as exc:
+            convertidas.append((n, None, str(exc)))
+
+    existentes = _chaves_existentes([tuple(r[c] for c in CHAVE) for _n, r, _e in convertidas if r])
+    vistas = set()
+    for n, reg, erro in convertidas:
+        if erro:
+            previa.erros += 1
+            previa.linhas.append({"n": n, "reg": None, "situacao": "Erro", "msg": erro})
+            continue
+        chave = tuple(reg[c] for c in CHAVE)
+        if chave in existentes or chave in vistas:
+            previa.existentes += 1
+            situacao = "Já existe"
+        else:
+            previa.novos += 1
+            situacao = "Novo"
+        vistas.add(chave)
+        previa.linhas.append({"n": n, "reg": reg, "situacao": situacao, "msg": None})
+    return previa
+
+
+# ---------- arquivo temporário entre a prévia e a confirmação ----------
+
+_TOKEN_RE = re.compile(r"^[a-f0-9]{32}$")
+VALIDADE_PREVIA_S = 2 * 60 * 60
+
+
+def guardar_temporario(pasta, conteudo):
+    import secrets
+    import time
+    from pathlib import Path
+
+    pasta = Path(pasta)
+    pasta.mkdir(parents=True, exist_ok=True)
+    limite = time.time() - VALIDADE_PREVIA_S
+    for antigo in pasta.glob("*.upload"):  # limpeza de prévias abandonadas
+        try:
+            if antigo.stat().st_mtime < limite:
+                antigo.unlink()
+        except OSError:
+            pass
+    token = secrets.token_hex(16)
+    (pasta / f"{token}.upload").write_bytes(conteudo)
+    return token
+
+
+def carregar_temporario(pasta, token):
+    from pathlib import Path
+
+    if not token or not _TOKEN_RE.match(token):
+        return None
+    caminho = Path(pasta) / f"{token}.upload"
+    return caminho.read_bytes() if caminho.exists() else None
+
+
+def remover_temporario(pasta, token):
+    from pathlib import Path
+
+    if token and _TOKEN_RE.match(token):
+        (Path(pasta) / f"{token}.upload").unlink(missing_ok=True)
+
+
 def ultimas_importacoes(limite=10):
     return db.query(
         "SELECT i.*, u.nome AS usuario_nome FROM importacoes i"

@@ -11,16 +11,18 @@ app/
   security.py             login_required, admin_required, CSRF, usuário da sessão
   models/                 M — dados e regras de negócio (SQL parametrizado)
     usuario.py            usuários, hash de senha, autenticação
-    registro.py           agrupamento_registro: filtros, busca, atendimento, listas de opções
-    importacao.py         leitura/validação do arquivo TOTVS e gravação sem duplicidade
+    registro.py           agrupamento_registro: filtros, busca, atendimento
+    mapeamento.py         programas interrompidos: vagas, turnos, reserva/liberação
+    importacao.py         leitura/validação do arquivo TOTVS, prévia e gravação sem duplicidade
     auditoria.py          registro de rastreabilidade
   controllers/            C — rotas Flask (Blueprints): recebem a requisição, validam formulário,
     auth.py               chamam o model, confirmam a transação e escolhem a view
     admin.py
     atendimento.py
     importacao.py
+    mapeamentos.py
   views/                  V — apresentação
-    templates/            Jinja2 (base.html, _flash.html, login, admin/, atendimento/, importacao/)
+    templates/            Jinja2 (base.html, _flash.html, login, senha, admin/, atendimento/, importacao/, mapeamentos/)
     static/css/app.css    tema Facebook, mobile first (tokens em :root)
     static/js/app.js      mostrar senha, confirmações, ícones Lucide
 migrations/               NNN_descricao.sql aplicadas em ordem (tabela schema_migrations)
@@ -40,3 +42,4 @@ tests/                    pytest (parser sem banco; integração com TEST_DATABA
 - **Duplicidade**: `UNIQUE (programa, item, prog_orig, doc_orig)` + `INSERT ... ON CONFLICT DO NOTHING RETURNING id`.
 - **CSRF**: token por sessão validado em todo POST.
 - **Status vazio** = `NULL`; valores permitidos garantidos por CHECK no banco.
+- **Vagas**: índices únicos parciais `WHERE liberado_em IS NULL` impedem reserva dupla mesmo com acessos simultâneos.

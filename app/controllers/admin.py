@@ -7,7 +7,6 @@ from app.security import admin_required
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
 
-SENHA_MIN = 6
 
 
 def _validar_dados(form, user_id=None):
@@ -27,11 +26,7 @@ def _validar_dados(form, user_id=None):
 
 
 def _validar_senha(senha, confirmacao):
-    if len(senha) < SENHA_MIN:
-        return f"A senha deve ter ao menos {SENHA_MIN} caracteres."
-    if senha != confirmacao:
-        return "A confirmação não confere com a senha."
-    return None
+    return usuario_model.validar_nova_senha(senha, confirmacao)
 
 
 def _usuario_ou_404(user_id):

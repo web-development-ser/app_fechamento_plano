@@ -45,7 +45,7 @@
   <div class="card">
     <div class="card-top">
       <strong>{{ r.item }}</strong>
-      <span class="badge">#{{ r.id }}</span>
+      <span>{% if r.loc_tegad %}<span class="badge azul">{{ r.loc_tegad }}</span> {% endif %}<span class="badge">#{{ r.id }}</span></span>
     </div>
     <div class="kv">
       <div><span>Programa</span>{{ r.programa }}</div>
@@ -59,12 +59,13 @@
 </div>
 
 <table class="tabela">
-  <thead><tr><th>ID</th><th>Programa</th><th>Item (SKU)</th><th>Prog. Orig.</th><th>Doc.</th><th>Equipto</th><th>Dt. Solic.</th><th>Qtd. Repos.</th><th>Status</th><th></th></tr></thead>
+  <thead><tr><th>ID</th><th>Programa</th><th>Item (SKU)</th><th>Prog. Orig.</th><th>Doc.</th><th>Equipto</th><th>Dt. Solic.</th><th>Qtd. Repos.</th><th>Loc. TEGAD</th><th>Status</th><th></th></tr></thead>
   <tbody>
   {% for r in registros %}
   <tr>
     <td>{{ r.id }}</td><td>{{ r.programa }}</td><td>{{ r.item }}</td><td>{{ r.prog_orig }}</td><td>{{ r.doc_orig }}</td>
     <td>{{ r.equipto or '—' }}</td><td>{{ fmt_data(r.dt_solic) }}</td><td class="num">{{ fmt_qtd(r.qtd_reposicao) }}</td>
+    <td>{{ r.loc_tegad or '—' }}</td>
     <td>{% if r.status %}<span class="badge azul">{{ r.status }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
     <td><a class="btn btn-primary btn-sm" href="{{ url_for('atendimento.editar', registro_id=r.id, voltar=voltar) }}"><i data-lucide="clipboard-pen"></i>Atender</a></td>
   </tr>

@@ -5,13 +5,16 @@ from flask import Blueprint, abort, current_app, flash, g, redirect, render_temp
 
 from app import db
 from app.models import auditoria
+from app.models import mapeamento as mapeamento_model
 from app.models import registro as registro_model
 from app.security import login_required
 
 bp = Blueprint("atendimento", __name__, url_prefix="/atendimento")
 
 FILTROS_TEXTO = ("programa", "item", "doc", "equipto")
-CAMPOS_ATENDIMENTO = ("dt_recebimento", "loc_tegad", "resp_ts7", "narrativa", "status")
+# campos editáveis pelo usuário (Loc. TEGAD vem do mapeamento, nunca do formulário)
+CAMPOS_FORM = ("dt_recebimento", "resp_ts7", "narrativa", "status")
+CAMPOS_ATENDIMENTO = CAMPOS_FORM + ("loc_tegad",)
 
 
 def ler_filtros(args):
@@ -28,20 +31,16 @@ def ler_filtros(args):
 
 
 def validar_atendimento(form):
-    """Retorna (dados, erros). Campos vazios viram NULL."""
+    """Retorna (dados, erros). Campos vazios viram NULL. Loc. TEGAD é ignorado (somente leitura)."""
     erros = []
-    dados = {k: (form.get(k) or "").strip() or None for k in CAMPOS_ATENDIMENTO}
+    dados = {k: (form.get(k) or "").strip() or None for k in CAMPOS_FORM}
     if dados["dt_recebimento"]:
         try:
             dados["dt_recebimento"] = datetime.fromisoformat(dados["dt_recebimento"])
         except ValueError:
             erros.append("Data e hora de recebimento inválida.")
-    if dados["loc_tegad"] and dados["loc_tegad"] not in registro_model.LOC_TEGAD_OPCOES:
-        erros.append("Loc. TEGAD inválido (use A a Z).")
-    if dados["resp_ts7"]:
-        dados["resp_ts7"] = dados["resp_ts7"].upper()
-        if dados["resp_ts7"] not in registro_model.RESP_TS7_OPCOES:
-            erros.append("Resp. TS7 inválido (use A1 a G10).")
+    if dados["resp_ts7"] and len(dados["resp_ts7"]) > registro_model.RESP_TS7_MAX:
+        erros.append(f"Resp. TS7 deve ter no máximo {registro_model.RESP_TS7_MAX} caracteres.")
     if dados["status"] and dados["status"] not in registro_model.STATUS_OPCOES:
         erros.append("Status inválido.")
     if dados["narrativa"] and len(dados["narrativa"]) > 2000:
@@ -82,13 +81,19 @@ def editar(registro_id):
     if not voltar.startswith("/") or voltar.startswith("//"):
         voltar = url_for("atendimento.lista")
 
+    # PROCV: Prog. Orig. -> Programa, Doc. Orig. -> Documento
+    mapeamento = mapeamento_model.buscar_ativo(registro["prog_orig"], registro["doc_orig"])
+
     if request.method == "POST":
         dados, erros = validar_atendimento(request.form)
+        # Loc. TEGAD: vaga do mapeamento ativo; sem mapeamento, mantém o valor já gravado
+        dados["loc_tegad"] = mapeamento["vaga"] if mapeamento else registro["loc_tegad"]
         if erros:
             for e in erros:
                 flash(e, "erro")
             registro = {**registro, **dados}
         else:
+            liberar = mapeamento is not None and dados["status"] is not None
             try:
                 registro_model.salvar_atendimento(registro_id, dados, g.user)
                 antes = {k: registro[k] for k in CAMPOS_ATENDIMENTO}
@@ -96,20 +101,35 @@ def editar(registro_id):
                     "atender_item", "agrupamento_registro", registro_id,
                     {"antes": antes, "depois": dados},
                 )
+                if liberar:
+                    mapeamento_model.liberar(mapeamento["id"], g.user, registro_id)
+                    auditoria.registrar(
+                        "liberar_mapeamento", "mapeamentos", mapeamento["id"],
+                        {"vaga": mapeamento["vaga"], "registro_id": registro_id},
+                    )
                 db.commit()
             except Exception:
                 db.rollback()
                 current_app.logger.exception("Falha ao salvar atendimento %s", registro_id)
                 flash("Não foi possível salvar o atendimento. Tente novamente.", "erro")
             else:
-                flash("Atendimento salvo com sucesso.", "sucesso")
+                msg = "Atendimento salvo com sucesso."
+                if liberar:
+                    msg += f" Vaga {mapeamento['vaga']} liberada."
+                flash(msg, "sucesso")
                 return redirect(url_for("atendimento.editar", registro_id=registro_id, voltar=voltar))
 
+    if mapeamento is None:
+        historico = mapeamento_model.buscar_ultimo(registro["prog_orig"], registro["doc_orig"])
+    else:
+        historico = mapeamento
     return render_template(
         "atendimento/editar.html",
         r=registro,
         voltar=voltar,
+        mapeamento=historico,
+        loc_tegad=mapeamento["vaga"] if mapeamento else registro["loc_tegad"],
         status_opcoes=registro_model.STATUS_OPCOES,
-        loc_opcoes=registro_model.LOC_TEGAD_OPCOES,
-        ts7_opcoes=registro_model.RESP_TS7_OPCOES,
+        descrever_turno=mapeamento_model.descrever_turno,
+        fuso=mapeamento_model.FUSO,
     )

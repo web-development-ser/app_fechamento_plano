@@ -72,18 +72,19 @@ def test_lista_padrao_status_vazio_e_filtros(app, admin_client):
 def test_salvar_atendimento(app, admin_client):
     _importar(admin_client, _xlsx([CAB, _linha(10, "SKU1")]))
     token = csrf(admin_client)
-    base = {"_csrf": token, "dt_recebimento": "2026-11-13T08:30", "loc_tegad": "C",
-            "resp_ts7": "g10", "narrativa": "ok", "status": "Agrupado"}
+    base = {"_csrf": token, "dt_recebimento": "2026-11-13T08:30", "loc_tegad": "Z99",
+            "resp_ts7": "sergio", "narrativa": "ok", "status": "Agrupado"}
 
-    r = admin_client.post("/atendimento/1", data={**base, "resp_ts7": "H1"})
-    assert "Resp. TS7 inválido" in r.get_data(as_text=True)
+    r = admin_client.post("/atendimento/1", data={**base, "resp_ts7": "x" * 151})
+    assert "Resp. TS7 deve ter no máximo" in r.get_data(as_text=True)
 
     r = admin_client.post("/atendimento/1", data=base)
     assert r.status_code == 302
     from app import db
     with app.app_context():
         reg = db.query_one("SELECT * FROM agrupamento_registro WHERE id = 1")
-        assert reg["status"] == "Agrupado" and reg["resp_ts7"] == "G10"
+        assert reg["status"] == "Agrupado" and reg["resp_ts7"] == "sergio"  # texto livre
+        assert reg["loc_tegad"] is None  # somente leitura: valor do formulário ignorado
         assert reg["pessoa_resp_tegad"] == "Admin" and reg["atualizado_por"] == 1
         assert db.query_one("SELECT count(*) n FROM auditoria WHERE acao = 'atender_item'")["n"] == 1
     # deixa de aparecer na lista padrão (status vazio)

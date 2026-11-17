@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Redefinir senha{% endblock %}
+{% block body %}
+<div class="{{ 'container' if g.user else 'login-wrap' }}">
+  <div class="login-box" style="margin:0 auto">
+    {% if not g.user %}<p class="brand-lg">TEGAD</p>{% endif %}
+    <p class="sub" style="text-align:center;margin-bottom:14px">Redefinir senha</p>
+    {% include "_flash.html" %}
+    <form class="panel grid" method="post" autocomplete="off">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <div>
+        <label for="usuario">Usuário</label>
+        <input id="usuario" name="usuario" value="{{ usuario }}" required maxlength="60" autocapitalize="none" autocomplete="username">
+      </div>
+      <div>
+        <label for="senha_atual">Senha atual</label>
+        <div class="field-pass">
+          <input id="senha_atual" name="senha_atual" type="password" required autocomplete="current-password">
+          <button type="button" data-toggle-pass="senha_atual" aria-label="Mostrar senha"><i data-lucide="eye"></i></button>
+        </div>
+      </div>
+      <div>
+        <label for="nova_senha">Nova senha</label>
+        <div class="field-pass">
+          <input id="nova_senha" name="nova_senha" type="password" required minlength="6" autocomplete="new-password">
+          <button type="button" data-toggle-pass="nova_senha" aria-label="Mostrar senha"><i data-lucide="eye"></i></button>
+        </div>
+      </div>
+      <div>
+        <label for="confirmacao">Confirmar nova senha</label>
+        <input id="confirmacao" name="confirmacao" type="password" required minlength="6" autocomplete="new-password">
+      </div>
+      <button class="btn btn-primary" type="submit"><i data-lucide="key-round"></i>Alterar senha</button>
+      <a class="btn btn-link" href="{{ url_for('atendimento.lista') if g.user else url_for('auth.login') }}"><i data-lucide="arrow-left"></i>Voltar</a>
+      <p class="sub" style="text-align:center;margin:0">Não lembra a senha atual? Procure o administrador.</p>
+    </form>
+  </div>
+</div>
+{% endblock %}

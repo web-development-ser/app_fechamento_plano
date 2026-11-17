@@ -15,7 +15,8 @@
       <input id="arquivo" name="arquivo" type="file" accept=".xlsx,.csv" required></div>
   </div>
   <div class="actions" style="margin-top:10px">
-    <button class="btn btn-primary" type="submit"><i data-lucide="upload"></i>Importar</button>
+    <button class="btn btn-primary" type="submit" name="acao" value="previa"><i data-lucide="eye"></i>Visualizar Prévia</button>
+    <button class="btn" type="submit" name="acao" value="importar"><i data-lucide="upload"></i>Importar direto</button>
   </div>
   <details class="mais" style="margin-top:8px">
     <summary><i data-lucide="info"></i> Colunas obrigatórias</summary>
@@ -23,6 +24,69 @@
       MotivoRepos, Desc MotivoRepos, Equipto, Gestor. Registros já existentes (Programa + Item + Prog. Orig. + Doc. Orig.) são ignorados.</p>
   </details>
 </form>
+
+{% if previa %}
+{% macro badge_sit(s) %}<span class="badge {{ {'Novo': 'verde', 'Já existe': '', 'Erro': 'vermelho'}[s] }}">{{ s }}</span>{% endmacro %}
+<section class="panel">
+  <div class="page-head" style="margin-bottom:8px">
+    <h2 style="margin:0">Prévia — {{ arquivo_nome }}</h2>
+    <span class="badge azul">Nada foi gravado ainda</span>
+  </div>
+  <div class="resumo">
+    <div class="stat"><b>{{ previa.total }}</b><span>Linhas analisadas</span></div>
+    <div class="stat"><b>{{ previa.novos }}</b><span>Serão importadas</span></div>
+    <div class="stat"><b>{{ previa.existentes }}</b><span>Já existentes (ignoradas)</span></div>
+    <div class="stat"><b>{{ previa.erros }}</b><span>Com erro</span></div>
+  </div>
+
+  {% set linhas = previa.linhas[:limite_previa] %}
+  <div class="prev-scroll" style="margin-top:10px">
+    <div class="cards">
+      {% for l in linhas %}
+      <div class="card">
+        <div class="card-top"><strong style="font-size:13px">Linha {{ l.n }}{% if l.reg %} · {{ l.reg.item }}{% endif %}</strong>{{ badge_sit(l.situacao) }}</div>
+        {% if l.reg %}
+        <div class="kv">
+          <div><span>Programa</span>{{ l.reg.programa }}</div>
+          <div><span>Prog. Orig. / Doc.</span>{{ l.reg.prog_orig }} / {{ l.reg.doc_orig }}</div>
+          <div><span>Dt. Solic. · Qtd.</span>{{ l.reg.dt_solic.strftime('%d/%m/%Y') if l.reg.dt_solic else '—' }} · {{ ('%g' % l.reg.qtd_reposicao) if l.reg.qtd_reposicao is not none else '—' }}</div>
+          <div><span>Equipto</span>{{ l.reg.equipto or '—' }}</div>
+        </div>
+        {% else %}<p class="sub" style="margin:0">{{ l.msg }}</p>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    <table class="tabela">
+      <thead><tr><th>Linha</th><th>Situação</th><th>Programa</th><th>Item</th><th>Descrição</th><th>Prog. Orig.</th><th>Doc.</th><th>Dt. Solic.</th><th>Qtd.</th><th>Equipto</th><th>Gestor</th></tr></thead>
+      <tbody>
+      {% for l in linhas %}
+      <tr>
+        <td>{{ l.n }}</td><td>{{ badge_sit(l.situacao) }}</td>
+        {% if l.reg %}
+        <td>{{ l.reg.programa }}</td><td>{{ l.reg.item }}</td><td>{{ l.reg.descricao or '' }}</td>
+        <td>{{ l.reg.prog_orig }}</td><td>{{ l.reg.doc_orig }}</td>
+        <td>{{ l.reg.dt_solic.strftime('%d/%m/%Y') if l.reg.dt_solic else '—' }}</td>
+        <td class="num">{{ ('%g' % l.reg.qtd_reposicao) if l.reg.qtd_reposicao is not none else '—' }}</td>
+        <td>{{ l.reg.equipto or '—' }}</td><td>{{ l.reg.gestor or '—' }}</td>
+        {% else %}<td colspan="9" class="muted">{{ l.msg }}</td>{% endif %}
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if previa.linhas|length > limite_previa %}
+  <p class="sub">Exibindo {{ limite_previa }} de {{ previa.linhas|length }} linhas. Os totais acima consideram o arquivo inteiro.</p>
+  {% endif %}
+
+  <form method="post" class="actions" style="margin-top:10px">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <input type="hidden" name="token" value="{{ previa.token }}">
+    <button class="btn btn-primary" type="submit" name="acao" value="confirmar" {{ 'disabled' if not previa.importaveis }}>
+      <i data-lucide="check"></i>Confirmar importação ({{ previa.novos }} novos)</button>
+    <button class="btn" type="submit" name="acao" value="cancelar" formnovalidate>Descartar</button>
+  </form>
+</section>
+{% endif %}
 
 {% if resultado %}
 <section class="panel">

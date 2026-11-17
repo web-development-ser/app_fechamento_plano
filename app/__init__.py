@@ -1,3 +1,5 @@
+import os
+
 from flask import Flask, render_template
 
 from app import db
@@ -14,18 +16,21 @@ def create_app(overrides=None):
         raise RuntimeError("SECRET_KEY não definido no .env")
     if not app.config.get("DATABASE_URL"):
         raise RuntimeError("DATABASE_URL não definido no .env")
+    # arquivos temporários da pré-visualização de importação
+    app.config.setdefault("UPLOAD_DIR", os.environ.get("UPLOAD_DIR") or os.path.join(app.instance_path, "uploads"))
 
     db.init_app(app)
     app.before_request(verify_csrf)
     app.before_request(load_current_user)
     app.jinja_env.globals["csrf_token"] = csrf_token
 
-    from app.controllers import admin, atendimento, auth, importacao
+    from app.controllers import admin, atendimento, auth, importacao, mapeamentos
 
     app.register_blueprint(auth.bp)
     app.register_blueprint(admin.bp)
     app.register_blueprint(atendimento.bp)
     app.register_blueprint(importacao.bp)
+    app.register_blueprint(mapeamentos.bp)
 
     @app.errorhandler(400)
     @app.errorhandler(403)

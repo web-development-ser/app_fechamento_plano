@@ -2,8 +2,7 @@
 from app import db
 
 STATUS_OPCOES = ("Agrupado", "Disponível", "Finalizado", "Barberan", "3DB")
-LOC_TEGAD_OPCOES = tuple(chr(c) for c in range(ord("A"), ord("Z") + 1))
-RESP_TS7_OPCOES = tuple(f"{letra}{n}" for letra in "ABCDEFG" for n in range(1, 11))
+RESP_TS7_MAX = 150
 
 # chave do filtro -> condição SQL (valores sempre via parâmetro)
 _FILTROS = {
@@ -37,9 +36,14 @@ def listar(filtros, limite, offset):
     where, params = _where(filtros)
     params.update(limite=limite, offset=offset)
     total = db.query_one(f"SELECT count(*) AS n FROM agrupamento_registro{where}", params)["n"]
+    # vaga do mapeamento ativo (PROCV: Prog. Orig. -> Programa, Doc. Orig. -> Documento)
     rows = db.query(
-        "SELECT id, programa, item, prog_orig, doc_orig, equipto, dt_solic, qtd_reposicao, status"
-        f" FROM agrupamento_registro{where} ORDER BY dt_solic NULLS LAST, id"
+        "SELECT r.id, r.programa, r.item, r.prog_orig, r.doc_orig, r.equipto, r.dt_solic,"
+        " r.qtd_reposicao, r.status, coalesce(m.vaga, r.loc_tegad) AS loc_tegad"
+        f" FROM (SELECT * FROM agrupamento_registro{where}) r"
+        " LEFT JOIN mapeamentos m ON m.liberado_em IS NULL"
+        "  AND m.programa = upper(trim(r.prog_orig)) AND m.documento = upper(trim(r.doc_orig))"
+        " ORDER BY r.dt_solic NULLS LAST, r.id"
         " LIMIT %(limite)s OFFSET %(offset)s",
         params,
     )

@@ -11,3 +11,4 @@ uploads/
 *.csv
 # configurações locais do Claude Code
 .claude/settings.local.json
+instance/

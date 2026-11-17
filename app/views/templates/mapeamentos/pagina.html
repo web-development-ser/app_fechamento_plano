@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Programas interrompidos{% endblock %}
+{% macro dt(v) %}{{ v.astimezone(agora.tzinfo).strftime('%d/%m/%Y %H:%M') if v else '—' }}{% endmacro %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Programas interrompidos</h1>
+    <p class="sub">{{ total_livres }} de {{ total_vagas }} vagas livres · {{ turno_atual }}</p>
+  </div>
+</div>
+
+<form class="panel" method="post" autocomplete="off">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <h2>Novo mapeamento</h2>
+  <div class="grid grid-2">
+    <div><label for="programa">Programa</label>
+      <input id="programa" name="programa" value="{{ dados.programa }}" required maxlength="50" inputmode="numeric" autofocus></div>
+    <div><label for="documento">Documento</label>
+      <input id="documento" name="documento" value="{{ dados.documento }}" required maxlength="50" inputmode="numeric"></div>
+  </div>
+
+  <label style="margin-top:12px">Fila + Posição (somente vagas livres)</label>
+  {% if total_livres == 0 %}
+    <div class="flash aviso"><i data-lucide="circle-alert"></i>Nenhuma vaga livre no momento.</div>
+  {% endif %}
+  {% for fila, vagas in livres_por_fila.items() %}
+  <fieldset class="vagas">
+    <legend>Fila {{ fila }} <span class="muted">({{ vagas|length }} livres)</span></legend>
+    <div class="vagas-grid">
+      {% for v in vagas %}
+      <label class="vaga"><input type="radio" name="vaga" value="{{ v }}" required {{ 'checked' if dados.vaga == v }}><span>{{ v }}</span></label>
+      {% else %}
+      <span class="muted">Sem vagas livres.</span>
+      {% endfor %}
+    </div>
+  </fieldset>
+  {% endfor %}
+
+  <p class="sub" style="margin:10px 0 0"><i data-lucide="info"></i> Data/hora, turno e usuário ({{ g.user.nome }}) são registrados automaticamente.</p>
+  <div class="actions" style="margin-top:10px">
+    <button class="btn btn-primary" type="submit" {{ 'disabled' if total_livres == 0 }}><i data-lucide="map-pin"></i>Reservar vaga</button>
+  </div>
+</form>
+
+<section class="panel">
+  <h2>Vagas reservadas ({{ ativos|length }})</h2>
+  {% if not ativos %}<p class="empty">Nenhuma vaga reservada.</p>{% endif %}
+  <div class="cards" style="display:grid">
+    {% for m in ativos %}
+    <div class="card">
+      <div class="card-top">
+        <strong>{{ m.vaga }}</strong>
+        {% if m.tem_registro %}<span class="badge azul">No atendimento</span>
+        {% else %}<span class="badge">Aguardando importação</span>{% endif %}
+      </div>
+      <div class="kv">
+        <div><span>Programa</span>{{ m.programa }}</div>
+        <div><span>Documento</span>{{ m.documento }}</div>
+        <div><span>Registro</span>{{ dt(m.registrado_em) }}</div>
+        <div><span>Turno · Usuário</span>{{ descrever_turno(m.turno) }} · {{ m.usuario_nome }}</div>
+      </div>
+      {% if g.user.perfil == 'ADMIN' %}
+      <form method="post" action="{{ url_for('mapeamentos.liberar', mapeamento_id=m.id) }}"
+            data-confirm="Liberar manualmente a vaga {{ m.vaga }}?">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <button class="btn btn-sm" type="submit"><i data-lucide="unlock"></i>Liberar vaga</button>
+      </form>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+{% if liberados %}
+<details class="panel mais">
+  <summary>Últimas liberações ({{ liberados|length }})</summary>
+  <div class="cards" style="display:grid">
+    {% for m in liberados %}
+    <div class="card">
+      <div class="card-top"><strong>{{ m.vaga }}</strong><span class="badge verde">Liberada</span></div>
+      <div class="kv">
+        <div><span>Programa / Doc.</span>{{ m.programa }} / {{ m.documento }}</div>
+        <div><span>Liberada em</span>{{ dt(m.liberado_em) }}</div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</details>
+{% endif %}
+{% endblock %}

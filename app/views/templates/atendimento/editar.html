@@ -26,6 +26,27 @@
   </div>
 </section>
 
+<section class="panel">
+  <h2>Mapeamento de programa interrompido</h2>
+  {% if mapeamento %}
+  <div class="info-grid">
+    <div><span>Vaga</span><strong>{{ mapeamento.vaga }}</strong>
+      {% if mapeamento.liberado_em %}<span class="badge verde">Liberada</span>{% else %}<span class="badge azul">Reservada</span>{% endif %}</div>
+    <div><span>Programa / Documento</span>{{ mapeamento.programa }} / {{ mapeamento.documento }}</div>
+    <div><span>Registrado em</span>{{ mapeamento.registrado_em.astimezone(fuso).strftime('%d/%m/%Y %H:%M') }}</div>
+    <div><span>Turno · Usuário</span>{{ descrever_turno(mapeamento.turno) }} · {{ mapeamento.usuario_nome }}</div>
+    {% if mapeamento.liberado_em %}
+    <div><span>Liberada em</span>{{ mapeamento.liberado_em.astimezone(fuso).strftime('%d/%m/%Y %H:%M') }}</div>
+    {% endif %}
+  </div>
+  {% if not mapeamento.liberado_em %}
+  <p class="sub" style="margin:8px 0 0">A vaga será liberada automaticamente ao salvar o atendimento com um Status.</p>
+  {% endif %}
+  {% else %}
+  <p class="sub" style="margin:0">Nenhum mapeamento encontrado para Prog. Orig. {{ r.prog_orig }} / Doc. {{ r.doc_orig }}. O atendimento pode ser salvo normalmente.</p>
+  {% endif %}
+</section>
+
 <form class="panel" method="post">
   <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
   <h2>Informações de atendimento</h2>
@@ -42,14 +63,10 @@
         {% for s in status_opcoes %}<option {{ 'selected' if r.status == s }}>{{ s }}</option>{% endfor %}
       </select></div>
     <div><label for="loc_tegad">Loc. TEGAD</label>
-      <select id="loc_tegad" name="loc_tegad">
-        <option value="">—</option>
-        {% for l in loc_opcoes %}<option {{ 'selected' if (r.loc_tegad or '').strip() == l }}>{{ l }}</option>{% endfor %}
-      </select></div>
+      <input id="loc_tegad" value="{{ loc_tegad or 'Sem mapeamento' }}" readonly
+             title="Preenchido automaticamente pelo Mapeamento de Programas Interrompidos"></div>
     <div><label for="resp_ts7">Resp. TS7</label>
-      <input id="resp_ts7" name="resp_ts7" list="ts7_lista" value="{{ r.resp_ts7 or '' }}" placeholder="Pesquise: A1 … G10"
-             maxlength="3" autocapitalize="characters" pattern="[A-Ga-g]([1-9]|10)">
-      <datalist id="ts7_lista">{% for o in ts7_opcoes %}<option value="{{ o }}">{% endfor %}</datalist></div>
+      <input id="resp_ts7" name="resp_ts7" value="{{ r.resp_ts7 or '' }}" placeholder="Nome do responsável" maxlength="150"></div>
     <div class="full"><label for="narrativa">Narrativa</label>
       <textarea id="narrativa" name="narrativa" maxlength="2000">{{ r.narrativa or '' }}</textarea></div>
   </div>

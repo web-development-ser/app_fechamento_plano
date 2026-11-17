@@ -12,6 +12,7 @@
   <a class="brand" href="{{ url_for('atendimento.lista') }}">TEGAD</a>
   <nav class="nav">
     <a href="{{ url_for('atendimento.lista') }}" class="{{ 'ativo' if request.blueprint == 'atendimento' }}"><i data-lucide="list-checks"></i>Atendimento</a>
+    <a href="{{ url_for('mapeamentos.pagina') }}" class="{{ 'ativo' if request.blueprint == 'mapeamentos' }}"><i data-lucide="map-pin"></i>Interrompidos</a>
     <a href="{{ url_for('importacao.pagina') }}" class="{{ 'ativo' if request.blueprint == 'importacao' }}"><i data-lucide="upload"></i>Importação</a>
     {% if g.user.perfil == 'ADMIN' %}
     <a href="{{ url_for('admin.usuarios') }}" class="{{ 'ativo' if request.blueprint == 'admin' }}"><i data-lucide="users"></i>Usuários</a>
@@ -19,6 +20,7 @@
   </nav>
   <div class="userbox">
     <i data-lucide="circle-user"></i><span>{{ g.user.nome }}</span>
+    <a class="btn btn-link btn-sm" href="{{ url_for('auth.redefinir_senha') }}" title="Alterar senha"><i data-lucide="key-round"></i></a>
     <form method="post" action="{{ url_for('auth.logout') }}">
       <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
       <button class="btn btn-link btn-sm" type="submit" title="Sair"><i data-lucide="log-out"></i></button>
