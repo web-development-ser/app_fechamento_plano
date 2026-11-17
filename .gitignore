@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+.pytest_cache/
+uploads/
+
+# dados reais do TOTVS (não versionar)
+.claude/regras_iniciais/pasta_excel/
+*.xlsx
+*.csv
+# configurações locais do Claude Code
+.claude/settings.local.json

@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Novo usuário' if novo else 'Editar usuário' }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ 'Novo usuário' if novo else 'Editar usuário' }}</h1>
+    {% if not novo %}<p class="sub">ID {{ dados.id }} · {{ 'Ativo' if dados.ativo else 'Inativo' }}</p>{% endif %}
+  </div>
+  <a class="btn btn-link" href="{{ url_for('admin.usuarios') }}"><i data-lucide="arrow-left"></i>Voltar</a>
+</div>
+
+<form class="panel" method="post">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <h2>Dados de acesso</h2>
+  <div class="grid grid-3">
+    <div><label for="nome">Nome completo</label><input id="nome" name="nome" value="{{ dados.nome }}" required maxlength="150"></div>
+    <div><label for="usuario">Usuário (login)</label><input id="usuario" name="usuario" value="{{ dados.usuario }}" required maxlength="60" autocapitalize="none"></div>
+    <div><label for="perfil">Perfil</label>
+      <select id="perfil" name="perfil">
+        <option value="USUARIO" {{ 'selected' if dados.perfil == 'USUARIO' }}>Usuário</option>
+        <option value="ADMIN" {{ 'selected' if dados.perfil == 'ADMIN' }}>Administrador</option>
+      </select>
+    </div>
+    {% if novo %}
+    <div><label for="senha">Senha</label>
+      <div class="field-pass"><input id="senha" name="senha" type="password" required minlength="6" autocomplete="new-password">
+      <button type="button" data-toggle-pass="senha" aria-label="Mostrar senha"><i data-lucide="eye"></i></button></div></div>
+    <div><label for="confirmacao">Confirmar senha</label>
+      <input id="confirmacao" name="confirmacao" type="password" required minlength="6" autocomplete="new-password"></div>
+    {% endif %}
+  </div>
+  <div class="actions" style="margin-top:12px">
+    <button class="btn btn-primary" type="submit"><i data-lucide="save"></i>Salvar</button>
+    <a class="btn" href="{{ url_for('admin.usuarios') }}">Cancelar</a>
+  </div>
+</form>
+
+{% if not novo %}
+<form class="panel" method="post" action="{{ url_for('admin.redefinir_senha', user_id=dados.id) }}"
+      data-confirm="Redefinir a senha de {{ dados.usuario }}?">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <h2>Redefinir senha</h2>
+  <p class="sub" style="margin:-6px 0 10px">A senha atual nunca é exibida. Informe uma nova senha e repasse ao usuário.</p>
+  <div class="grid grid-3">
+    <div><label for="nova">Nova senha</label>
+      <div class="field-pass"><input id="nova" name="senha" type="password" required minlength="6" autocomplete="new-password">
+      <button type="button" data-toggle-pass="nova" aria-label="Mostrar senha"><i data-lucide="eye"></i></button></div></div>
+    <div><label for="conf2">Confirmar nova senha</label>
+      <input id="conf2" name="confirmacao" type="password" required minlength="6" autocomplete="new-password"></div>
+  </div>
+  <div class="actions" style="margin-top:12px">
+    <button class="btn btn-primary" type="submit"><i data-lucide="key-round"></i>Redefinir senha</button>
+  </div>
+</form>
+{% endif %}
+{% endblock %}

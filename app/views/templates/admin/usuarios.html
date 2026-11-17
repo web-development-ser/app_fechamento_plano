@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Usuários{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Usuários</h1>
+    <p class="sub">{{ usuarios|length }} cadastrados</p>
+  </div>
+  <a class="btn btn-primary" href="{{ url_for('admin.novo_usuario') }}"><i data-lucide="user-plus"></i>Novo usuário</a>
+</div>
+
+{% macro status_form(u) %}
+  {% if u.id != g.user.id %}
+  <form method="post" action="{{ url_for('admin.alternar_status', user_id=u.id) }}"
+        data-confirm="{{ 'Desativar' if u.ativo else 'Ativar' }} o usuário {{ u.usuario }}?">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <button class="btn btn-sm" type="submit">
+      <i data-lucide="{{ 'user-x' if u.ativo else 'user-check' }}"></i>{{ 'Desativar' if u.ativo else 'Ativar' }}
+    </button>
+  </form>
+  {% endif %}
+{% endmacro %}
+
+<div class="cards">
+  {% for u in usuarios %}
+  <div class="card">
+    <div class="card-top">
+      <strong>{{ u.nome }}</strong>
+      <span class="badge {{ 'verde' if u.ativo else 'vermelho' }}">{{ 'Ativo' if u.ativo else 'Inativo' }}</span>
+    </div>
+    <div class="kv">
+      <div><span>Usuário</span>{{ u.usuario }}</div>
+      <div><span>Perfil</span>{{ 'Administrador' if u.perfil == 'ADMIN' else 'Usuário' }}</div>
+    </div>
+    <div class="actions" style="margin-top:8px">
+      <a class="btn btn-sm" href="{{ url_for('admin.editar_usuario', user_id=u.id) }}"><i data-lucide="pencil"></i>Editar</a>
+      {{ status_form(u) }}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<table class="tabela">
+  <thead><tr><th>ID</th><th>Nome</th><th>Usuário</th><th>Perfil</th><th>Status</th><th></th></tr></thead>
+  <tbody>
+  {% for u in usuarios %}
+  <tr>
+    <td>{{ u.id }}</td>
+    <td>{{ u.nome }}</td>
+    <td>{{ u.usuario }}</td>
+    <td><span class="badge {{ 'azul' if u.perfil == 'ADMIN' }}">{{ 'Administrador' if u.perfil == 'ADMIN' else 'Usuário' }}</span></td>
+    <td><span class="badge {{ 'verde' if u.ativo else 'vermelho' }}">{{ 'Ativo' if u.ativo else 'Inativo' }}</span></td>
+    <td><div class="actions" style="justify-content:flex-end">
+      <a class="btn btn-sm" href="{{ url_for('admin.editar_usuario', user_id=u.id) }}"><i data-lucide="pencil"></i>Editar</a>
+      {{ status_form(u) }}
+    </div></td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

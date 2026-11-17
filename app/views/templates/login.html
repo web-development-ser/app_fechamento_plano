@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Entrar{% endblock %}
+{% block body %}
+<div class="login-wrap">
+  <div class="login-box">
+    <p class="brand-lg">TEGAD</p>
+    <p class="sub" style="text-align:center;margin-bottom:14px">Fechamento de plano</p>
+    {% include "_flash.html" %}
+    <form class="panel grid" method="post" autocomplete="on">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <div>
+        <label for="usuario">Usuário</label>
+        <input id="usuario" name="usuario" value="{{ usuario }}" required autofocus autocapitalize="none" maxlength="60">
+      </div>
+      <div>
+        <label for="senha">Senha</label>
+        <div class="field-pass">
+          <input id="senha" name="senha" type="password" required autocomplete="current-password">
+          <button type="button" data-toggle-pass="senha" aria-label="Mostrar senha"><i data-lucide="eye"></i></button>
+        </div>
+      </div>
+      <button class="btn btn-primary" type="submit"><i data-lucide="log-in"></i>Entrar</button>
+      <p class="sub" style="text-align:center">Esqueceu a senha? Procure o administrador.</p>
+    </form>
+  </div>
+</div>
+{% endblock %}

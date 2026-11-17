@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Geração e importação{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Geração e importação</h1>
+    <p class="sub">Gere o relatório no TOTVS (WGCP344C) e envie o arquivo .xlsx ou .csv.</p>
+  </div>
+</div>
+
+<form class="panel" method="post" enctype="multipart/form-data">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <div class="grid">
+    <div><label for="arquivo">Arquivo do relatório</label>
+      <input id="arquivo" name="arquivo" type="file" accept=".xlsx,.csv" required></div>
+  </div>
+  <div class="actions" style="margin-top:10px">
+    <button class="btn btn-primary" type="submit"><i data-lucide="upload"></i>Importar</button>
+  </div>
+  <details class="mais" style="margin-top:8px">
+    <summary><i data-lucide="info"></i> Colunas obrigatórias</summary>
+    <p class="sub">Lote, Programa, Item, Descrição, Prog. Orig., Doc. Orig., Dt. Solic., QtdReposicao,
+      MotivoRepos, Desc MotivoRepos, Equipto, Gestor. Registros já existentes (Programa + Item + Prog. Orig. + Doc. Orig.) são ignorados.</p>
+  </details>
+</form>
+
+{% if resultado %}
+<section class="panel">
+  <div class="page-head" style="margin-bottom:8px">
+    <h2 style="margin:0">Resumo — {{ arquivo_nome }}</h2>
+    {% if resultado.sucesso %}<span class="badge verde">Concluído com sucesso</span>
+    {% else %}<span class="badge vermelho">Concluído com inconsistências</span>{% endif %}
+  </div>
+  <div class="resumo">
+    <div class="stat"><b>{{ resultado.total }}</b><span>Analisados</span></div>
+    <div class="stat"><b>{{ resultado.novos }}</b><span>Novos importados</span></div>
+    <div class="stat"><b>{{ resultado.existentes }}</b><span>Já existentes</span></div>
+    <div class="stat"><b>{{ resultado.erros|length }}</b><span>Com erro</span></div>
+  </div>
+  {% if resultado.erros %}
+  <details class="mais" style="margin-top:10px" open>
+    <summary>Ver erros ({{ resultado.erros|length }})</summary>
+    <ul class="sub" style="margin:0;padding-left:18px">
+      {% for linha, msg in resultado.erros[:200] %}<li>Linha {{ linha }}: {{ msg }}</li>{% endfor %}
+      {% if resultado.erros|length > 200 %}<li>… e mais {{ resultado.erros|length - 200 }}.</li>{% endif %}
+    </ul>
+  </details>
+  {% endif %}
+</section>
+{% endif %}
+
+{% if historico %}
+<section class="panel">
+  <h2>Últimas importações</h2>
+  <div class="cards" style="display:grid">
+  {% for h in historico %}
+    <div class="card">
+      <div class="card-top"><strong style="font-size:13px">{{ h.arquivo_nome }}</strong><span class="badge">#{{ h.id }}</span></div>
+      <div class="kv">
+        <div><span>Por</span>{{ h.usuario_nome }}</div>
+        <div><span>Em</span>{{ h.importado_em.strftime('%d/%m/%Y %H:%M') }}</div>
+        <div><span>Novos / Existentes</span>{{ h.novos }} / {{ h.existentes }}</div>
+        <div><span>Total / Erros</span>{{ h.total }} / {{ h.erros }}</div>
+      </div>
+    </div>
+  {% endfor %}
+  </div>
+</section>
+{% endif %}
+{% endblock %}

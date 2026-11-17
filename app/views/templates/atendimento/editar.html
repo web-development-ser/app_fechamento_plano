@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Atender #{{ r.id }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Atendimento #{{ r.id }}</h1>
+    <p class="sub">{{ r.item }} · {{ r.descricao or '' }}</p>
+  </div>
+  <a class="btn btn-link" href="{{ voltar }}"><i data-lucide="arrow-left"></i>Voltar</a>
+</div>
+
+<section class="panel">
+  <h2>Informações gerais</h2>
+  <div class="info-grid">
+    <div><span>Lote</span>{{ r.lote or '—' }}</div>
+    <div><span>Programa</span>{{ r.programa }}</div>
+    <div><span>Item (SKU)</span>{{ r.item }}</div>
+    <div><span>Prog. Orig.</span>{{ r.prog_orig }}</div>
+    <div><span>Doc. Orig.</span>{{ r.doc_orig }}</div>
+    <div><span>Dt. Solic.</span>{{ r.dt_solic.strftime('%d/%m/%Y') if r.dt_solic else '—' }}</div>
+    <div><span>Qtd. Reposição</span>{{ ('%g' % r.qtd_reposicao) if r.qtd_reposicao is not none else '—' }}</div>
+    <div><span>Equipto</span>{{ r.equipto or '—' }}</div>
+    <div><span>Motivo reposição</span>{{ r.motivo_repos or '—' }} {{ ('· ' ~ r.desc_motivo_repos) if r.desc_motivo_repos }}</div>
+    <div><span>Gestor</span>{{ r.gestor or '—' }}</div>
+    <div style="grid-column:1/-1"><span>Descrição</span>{{ r.descricao or '—' }}</div>
+  </div>
+</section>
+
+<form class="panel" method="post">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <h2>Informações de atendimento</h2>
+  {% set dt = r.dt_recebimento %}
+  <div class="grid grid-form">
+    <div><label for="dt_recebimento">Data e hora de recebimento</label>
+      <input id="dt_recebimento" name="dt_recebimento" type="datetime-local"
+             value="{{ dt.strftime('%Y-%m-%dT%H:%M') if dt and dt is not string else (dt or '') }}"></div>
+    <div><label for="pessoa">Pessoa resp. TEGAD</label>
+      <input id="pessoa" value="{{ g.user.nome }}" readonly title="Preenchido com o usuário atual"></div>
+    <div><label for="status">Status</label>
+      <select id="status" name="status">
+        <option value="">— vazio —</option>
+        {% for s in status_opcoes %}<option {{ 'selected' if r.status == s }}>{{ s }}</option>{% endfor %}
+      </select></div>
+    <div><label for="loc_tegad">Loc. TEGAD</label>
+      <select id="loc_tegad" name="loc_tegad">
+        <option value="">—</option>
+        {% for l in loc_opcoes %}<option {{ 'selected' if (r.loc_tegad or '').strip() == l }}>{{ l }}</option>{% endfor %}
+      </select></div>
+    <div><label for="resp_ts7">Resp. TS7</label>
+      <input id="resp_ts7" name="resp_ts7" list="ts7_lista" value="{{ r.resp_ts7 or '' }}" placeholder="Pesquise: A1 … G10"
+             maxlength="3" autocapitalize="characters" pattern="[A-Ga-g]([1-9]|10)">
+      <datalist id="ts7_lista">{% for o in ts7_opcoes %}<option value="{{ o }}">{% endfor %}</datalist></div>
+    <div class="full"><label for="narrativa">Narrativa</label>
+      <textarea id="narrativa" name="narrativa" maxlength="2000">{{ r.narrativa or '' }}</textarea></div>
+  </div>
+  {% if r.atualizado_em and r.pessoa_resp_tegad %}
+  <p class="sub" style="margin-top:8px">Último atendimento: {{ r.pessoa_resp_tegad }} em {{ r.atualizado_em.strftime('%d/%m/%Y %H:%M') if r.atualizado_em is not string else r.atualizado_em }}</p>
+  {% endif %}
+  <div class="actions" style="margin-top:12px">
+    <button class="btn btn-primary" type="submit"><i data-lucide="save"></i>Salvar</button>
+    <a class="btn" href="{{ voltar }}">Voltar</a>
+  </div>
+</form>
+{% endblock %}

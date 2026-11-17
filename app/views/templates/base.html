@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}TEGAD{% endblock %} · TEGAD</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+</head>
+<body>
+{% if g.user %}
+<header class="topbar">
+  <a class="brand" href="{{ url_for('atendimento.lista') }}">TEGAD</a>
+  <nav class="nav">
+    <a href="{{ url_for('atendimento.lista') }}" class="{{ 'ativo' if request.blueprint == 'atendimento' }}"><i data-lucide="list-checks"></i>Atendimento</a>
+    <a href="{{ url_for('importacao.pagina') }}" class="{{ 'ativo' if request.blueprint == 'importacao' }}"><i data-lucide="upload"></i>Importação</a>
+    {% if g.user.perfil == 'ADMIN' %}
+    <a href="{{ url_for('admin.usuarios') }}" class="{{ 'ativo' if request.blueprint == 'admin' }}"><i data-lucide="users"></i>Usuários</a>
+    {% endif %}
+  </nav>
+  <div class="userbox">
+    <i data-lucide="circle-user"></i><span>{{ g.user.nome }}</span>
+    <form method="post" action="{{ url_for('auth.logout') }}">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <button class="btn btn-link btn-sm" type="submit" title="Sair"><i data-lucide="log-out"></i></button>
+    </form>
+  </div>
+</header>
+{% endif %}
+{% block body %}
+<main class="container">
+  {% include "_flash.html" %}
+  {% block content %}{% endblock %}
+</main>
+{% endblock %}
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

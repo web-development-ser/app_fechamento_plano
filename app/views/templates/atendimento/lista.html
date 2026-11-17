@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Atendimento ao item{% endblock %}
+{% macro fmt_data(d) %}{{ d.strftime('%d/%m/%Y') if d else '—' }}{% endmacro %}
+{% macro fmt_qtd(q) %}{{ ('%g' % q) if q is not none else '—' }}{% endmacro %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Atendimento ao item</h1>
+    <p class="sub">{{ total }} registro(s){% if filtros.status == '' %} com status vazio{% endif %}</p>
+  </div>
+</div>
+
+<form class="panel" method="get">
+  <div class="grid grid-2 grid-4">
+    <div><label for="programa">Programa</label><input id="programa" name="programa" value="{{ filtros.programa }}" placeholder="Pesquisar" inputmode="search"></div>
+    <div><label for="item">Item (SKU)</label><input id="item" name="item" value="{{ filtros.item }}" placeholder="Pesquisar" inputmode="search"></div>
+    <div><label for="status">Status</label>
+      <select id="status" name="status">
+        <option value="" {{ 'selected' if filtros.status == '' }}>Vazio</option>
+        {% for s in status_opcoes %}<option {{ 'selected' if filtros.status == s }}>{{ s }}</option>{% endfor %}
+        <option value="todos" {{ 'selected' if filtros.status == 'todos' }}>Todos</option>
+      </select>
+    </div>
+  </div>
+  <details class="mais" {{ 'open' if filtros_ocultos_ativos }} style="margin-top:8px">
+    <summary><i data-lucide="sliders-horizontal"></i> Mais filtros</summary>
+    <div class="grid grid-2 grid-4">
+      <div><label for="doc">Documento</label><input id="doc" name="doc" value="{{ filtros.doc }}"></div>
+      <div><label for="equipto">Equipamento</label><input id="equipto" name="equipto" value="{{ filtros.equipto }}"></div>
+      <div><label for="dt_solic">Data de solicitação</label><input id="dt_solic" name="dt_solic" type="date" value="{{ filtros.dt_solic or '' }}"></div>
+    </div>
+  </details>
+  <div class="actions" style="margin-top:10px">
+    <button class="btn btn-primary" type="submit"><i data-lucide="search"></i>Filtrar</button>
+    <a class="btn" href="{{ url_for('atendimento.lista') }}">Limpar</a>
+  </div>
+</form>
+
+{% if not registros %}
+<div class="panel empty">Nenhum registro encontrado para os filtros selecionados.</div>
+{% else %}
+{% set voltar = request.full_path %}
+<div class="cards">
+  {% for r in registros %}
+  <div class="card">
+    <div class="card-top">
+      <strong>{{ r.item }}</strong>
+      <span class="badge">#{{ r.id }}</span>
+    </div>
+    <div class="kv">
+      <div><span>Programa</span>{{ r.programa }}</div>
+      <div><span>Prog. Orig. / Doc.</span>{{ r.prog_orig }} / {{ r.doc_orig }}</div>
+      <div><span>Equipto</span>{{ r.equipto or '—' }}</div>
+      <div><span>Dt. Solic. · Qtd.</span>{{ fmt_data(r.dt_solic) }} · {{ fmt_qtd(r.qtd_reposicao) }}</div>
+    </div>
+    <a class="btn btn-primary btn-sm" href="{{ url_for('atendimento.editar', registro_id=r.id, voltar=voltar) }}"><i data-lucide="clipboard-pen"></i>Atender</a>
+  </div>
+  {% endfor %}
+</div>
+
+<table class="tabela">
+  <thead><tr><th>ID</th><th>Programa</th><th>Item (SKU)</th><th>Prog. Orig.</th><th>Doc.</th><th>Equipto</th><th>Dt. Solic.</th><th>Qtd. Repos.</th><th>Status</th><th></th></tr></thead>
+  <tbody>
+  {% for r in registros %}
+  <tr>
+    <td>{{ r.id }}</td><td>{{ r.programa }}</td><td>{{ r.item }}</td><td>{{ r.prog_orig }}</td><td>{{ r.doc_orig }}</td>
+    <td>{{ r.equipto or '—' }}</td><td>{{ fmt_data(r.dt_solic) }}</td><td class="num">{{ fmt_qtd(r.qtd_reposicao) }}</td>
+    <td>{% if r.status %}<span class="badge azul">{{ r.status }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+    <td><a class="btn btn-primary btn-sm" href="{{ url_for('atendimento.editar', registro_id=r.id, voltar=voltar) }}"><i data-lucide="clipboard-pen"></i>Atender</a></td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+{% if paginas > 1 %}
+<nav class="paginacao">
+  {% if pagina > 1 %}<a class="btn btn-sm" href="{{ url_for('atendimento.lista', pagina=pagina-1, **args_base) }}"><i data-lucide="chevron-left"></i></a>{% endif %}
+  <span class="muted">Página {{ pagina }} de {{ paginas }}</span>
+  {% if pagina < paginas %}<a class="btn btn-sm" href="{{ url_for('atendimento.lista', pagina=pagina+1, **args_base) }}"><i data-lucide="chevron-right"></i></a>{% endif %}
+</nav>
+{% endif %}
+{% endif %}
+{% endblock %}
