@@ -30,7 +30,7 @@
   <h2>Mapeamento de programa interrompido</h2>
   {% if mapeamento %}
   <div class="info-grid">
-    <div><span>Vaga</span><strong>{{ mapeamento.vaga }}</strong>
+    <div><span>Localização</span><strong>{{ mapeamento.vaga|local }}</strong>
       {% if mapeamento.liberado_em %}<span class="badge verde">Liberada</span>{% else %}<span class="badge azul">Reservada</span>{% endif %}</div>
     <div><span>Programa / Documento</span>{{ mapeamento.programa }} / {{ mapeamento.documento }}</div>
     <div><span>Registrado em</span>{{ mapeamento.registrado_em.astimezone(fuso).strftime('%d/%m/%Y %H:%M') }}</div>
@@ -64,7 +64,7 @@
         {% for s in status_opcoes %}<option {{ 'selected' if r.status == s }}>{{ s }}</option>{% endfor %}
       </select></div>
     <div><label for="loc_tegad">Loc. TEGAD</label>
-      <input id="loc_tegad" value="{{ loc_tegad or 'Sem mapeamento' }}" readonly
+      <input id="loc_tegad" value="{{ (loc_tegad|local) or 'Sem mapeamento' }}" readonly
              title="Preenchido automaticamente pelo Mapeamento de Programas Interrompidos"></div>
     <div><label for="resp_ts7">Resp. TS7</label>
       <input id="resp_ts7" name="resp_ts7" value="{{ r.resp_ts7 or '' }}" placeholder="Nome do responsável" maxlength="150"></div>

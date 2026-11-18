@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Item #{{ r.id }}{% endblock %}
+{% macro dth(v) %}{{ v.astimezone(fuso).strftime('%d/%m/%Y %H:%M') if v and v.tzinfo else (v.strftime('%d/%m/%Y %H:%M') if v else '—') }}{% endmacro %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ r.item }}</h1>
+    <p class="sub">{{ r.descricao or '' }}</p>
+  </div>
+  <a class="btn btn-link" href="{{ voltar }}"><i data-lucide="arrow-left"></i>Voltar</a>
+</div>
+
+<section class="panel">
+  <div class="card-top" style="margin-bottom:10px">
+    <h2 style="margin:0">Situação</h2>
+    {% if r.status %}<span class="badge verde">Atendido · {{ r.status }}</span>{% else %}<span class="badge vermelho">Pendente</span>{% endif %}
+  </div>
+  <div class="info-grid">
+    <div><span>Recebido por</span>{{ r.pessoa_resp_tegad or '—' }}</div>
+    <div><span>Resp. TS7</span>{{ r.resp_ts7 or '—' }}</div>
+    <div><span>Recebido em</span>{{ dth(r.dt_recebimento) }}</div>
+    <div><span>Loc. TEGAD</span>{{ ((mapeamento.vaga if mapeamento and not mapeamento.liberado_em else r.loc_tegad)|local) or '—' }}</div>
+    <div><span>Atualizado por</span>{{ r.atualizado_por_nome or '—' }}</div>
+    <div><span>Atualizado em</span>{{ dth(r.atualizado_em) }}</div>
+    {% if r.narrativa %}<div style="grid-column:1/-1"><span>Narrativa</span>{{ r.narrativa }}</div>{% endif %}
+  </div>
+</section>
+
+<section class="panel">
+  <h2>Dados do item</h2>
+  <div class="info-grid">
+    <div><span>Lote</span>{{ r.lote or '—' }}</div>
+    <div><span>Programa</span>{{ r.programa }}</div>
+    <div><span>Item (SKU)</span>{{ r.item }}</div>
+    <div><span>Prog. Orig.</span>{{ r.prog_orig }}</div>
+    <div><span>Doc. Orig.</span>{{ r.doc_orig }}</div>
+    <div><span>Setor</span>{{ setor or '—' }}</div>
+    <div><span>Equipto</span>{{ r.equipto or '—' }}</div>
+    <div><span>Dt. Solic.</span>{{ r.dt_solic.strftime('%d/%m/%Y') if r.dt_solic else '—' }}</div>
+    <div><span>Qtd. Reposição</span>{{ ('%g' % r.qtd_reposicao) if r.qtd_reposicao is not none else '—' }}</div>
+    <div><span>Motivo reposição</span>{{ r.motivo_repos or '—' }}{{ (' · ' ~ r.desc_motivo_repos) if r.desc_motivo_repos }}</div>
+    <div><span>Gestor</span>{{ r.gestor or '—' }}</div>
+    <div><span>Importado por</span>{{ r.importado_por_nome or '—' }} · {{ dth(r.criado_em) }}</div>
+    <div style="grid-column:1/-1"><span>Descrição</span>{{ r.descricao or '—' }}</div>
+  </div>
+</section>
+
+{% if mapeamento %}
+<section class="panel">
+  <h2>Programa interrompido</h2>
+  <div class="info-grid">
+    <div><span>Localização</span>{{ mapeamento.vaga|local }}
+      {% if mapeamento.liberado_em %}<span class="badge verde">Retirada</span>{% else %}<span class="badge azul">Na localização</span>{% endif %}</div>
+    <div><span>Programa / Documento</span>{{ mapeamento.programa }} / {{ mapeamento.documento }}</div>
+    <div><span>Turno</span>{{ descrever_turno(mapeamento.turno) }}</div>
+    {% if mapeamento.liberado_em %}<div><span>Retirada em</span>{{ dth(mapeamento.liberado_em) }}</div>{% endif %}
+  </div>
+</section>
+{% endif %}
+{% endblock %}

@@ -11,7 +11,7 @@ from app.security import login_required
 
 bp = Blueprint("atendimento", __name__, url_prefix="/atendimento")
 
-FILTROS_TEXTO = ("programa", "item", "doc", "equipto")
+FILTROS_TEXTO = ("programa", "prog_orig", "item", "doc", "equipto")
 # campos editáveis pelo usuário (Loc. TEGAD vem do mapeamento, nunca do formulário)
 CAMPOS_FORM = ("dt_recebimento", "resp_ts7", "narrativa", "status")
 CAMPOS_ATENDIMENTO = CAMPOS_FORM + ("loc_tegad",)
@@ -123,10 +123,14 @@ def editar(registro_id):
                 flash("Não foi possível salvar o atendimento. Tente novamente.", "erro")
             else:
                 msg = "Atendimento salvo com sucesso."
+                if mapeamento is not None:
+                    est = mapeamento["vaga"] == mapeamento_model.ESTOQUE
+                    de_local = "do Estoque" if est else f"da vaga {mapeamento['vaga']}"
+                    no_local = "no Estoque" if est else f"na vaga {mapeamento['vaga']}"
                 if liberar:
-                    msg += f" Caixa retirada da vaga {mapeamento['vaga']}."
+                    msg += f" Caixa retirada {de_local}."
                 elif pendentes:
-                    msg += (f" A caixa continua na vaga {mapeamento['vaga']}: {pendentes} item(ns) do mesmo"
+                    msg += (f" A caixa continua {no_local}: {pendentes} item(ns) do mesmo"
                             " programa/documento ainda pendente(s).")
                 flash(msg, "sucesso")
                 return redirect(url_for("atendimento.editar", registro_id=registro_id, voltar=voltar))

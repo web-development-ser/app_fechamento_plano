@@ -48,7 +48,8 @@ Origem: `regras_iniciais/2. interface_edição_view.md`
 
 ### View — `app/views/templates/atendimento/lista.html`, `atendimento/editar.html`
 - Lista: ID, Programa, Item, Prog. Orig., Doc., Equipto, Dt. Solic., Qtd. Reposição + botão "Atender".
-- Filtros visíveis: Programa, Item. Recolhíveis ("Mais filtros"): Documento, Equipamento, Data de Solicitação.
+- Filtros visíveis: Programa, **Programa Original** (ao lado de Programa, regra 07), Item (SKU).
+  Recolhíveis ("Mais filtros"): Documento, Equipamento, Data de Solicitação. Todos combinam entre si (E lógico).
 - Mensagem vazia: "Nenhum registro encontrado para os filtros selecionados."
 - Tela de atendimento: Informações gerais (somente leitura) + formulário (Data/Hora de recebimento,
   Pessoa Resp. TEGAD = usuário atual, Loc. TEGAD somente leitura, Resp. TS7 texto livre, Narrativa, Status).
@@ -122,6 +123,10 @@ Origem: `regras_iniciais/04. mapeamentos_e_ajustes.md`
   itens do mesmo Prog. Orig. + Doc. Orig. também estão Disponível/Finalizado [Assumido — no relatório real
   12 pares Prog. Orig.+Doc. têm 2 ou 3 itens]. Agrupado, Barberan e 3DB mantêm a caixa na vaga.
 - Retirada: grava `liberado_em`, `liberado_por` e `registro_id`; o histórico não é apagado.
+- **Estoque (regra 07):** flag "Enviar para Estoque" grava a localização especial `EST` (exibida como "Estoque").
+  Quando marcada, a seleção de vagas fica bloqueada na tela e qualquer vaga enviada é ignorada no servidor.
+  [Assumido] Estoque não tem limite de caixas (trigger ignora `EST`, migration 004) e segue a mesma regra de
+  saída (Disponível/Finalizado). Loc. TEGAD do atendimento passa a mostrar "Estoque".
 
 ### View — `app/views/templates/mapeamentos/pagina.html` (menu "Interrompidos")
 - Mobile first: Programa/Documento em 2 colunas; vagas como botões grandes por fila (5 por linha no celular, 10 no tablet/desktop).
@@ -151,11 +156,79 @@ Origem: `regras_iniciais/06. vagas_capacidade_e_consulta.md`
 - Destaque: badge **Pendente** (vermelho) ou **Atendido · <status>** (verde) e resumo com % atendido.
 - Filtros: os mesmos do Atendimento (Programa, Item; Documento, Equipamento, Data em "Mais filtros")
   + **Setor** + Situação (Todos [padrão], Pendentes, Atendidos ou um status específico).
-- Mostra Item, Descrição, Programa, Prog. Orig., Doc., Setor, Equipto, Dt. Solic., Qtd., Loc. TEGAD, Recebido em.
-  [Assumido] Não exibe nomes de pessoas nem a narrativa. Cartões no celular, tabela no desktop.
+- Lista: Item, Programa, Prog. Orig., Doc., Setor, Dt. Solic., Qtd., Loc. TEGAD, **Recebido por**, **Resp. TS7**,
+  Recebido em + botão **Detalhes** (regra 07; ajuste 2026-11-18: "Registrado por" removido, Resp. TS7 no lugar).
+  Cartões no celular, tabela no desktop.
+  - [Assumido] Recebido por = Pessoa Resp. TEGAD do atendimento.
+- Detalhes (`/consulta/<id>`, `consulta/detalhe.html`, sem login): situação, Recebido por, Resp. TS7, recebido em,
+  Loc. TEGAD, narrativa, todos os dados do relatório, quem importou e o histórico do programa interrompido
+  (sem "Registrado por", mesmo ajuste da lista).
 
 ### Controller — `app/controllers/consulta.py`
-- Somente GET; reutiliza a leitura de filtros do Atendimento; valores inválidos são ignorados.
+- Somente GET; reutiliza a leitura de filtros do Atendimento (inclui Programa Original); valores inválidos são ignorados.
+
+---
+
+## M6 — Dashboard Troca de Turno
+Origem: `regras_iniciais/07. estoque_consulta_dashboard_pwa.md`
+
+### Model — `app/models/registro.py` (`contagem_por_status`)
+- Barras na ordem fixa **Não Atendimento**, Agrupado, Disponível, Finalizado, Barberan, 3DB (zerados aparecem).
+- **Não Atendimento** = registros com status vazio (NULL, em branco ou só espaços). Eles **sempre entram em
+  "Itens no Total"** (ajuste 2026-11-18).
+- Como o item não atendido não tem data de atendimento nem usuário, as regras de filtro são separadas:
+  - Data com base **Atendimento** (padrão): atendidos no dia + todos os não atendidos solicitados até a data
+    (o que ainda está em aberto para o turno).
+  - Data com base **Solicitação**: atendidos e não atendidos com Dt. Solic. = data.
+  - **Usuário**: filtra só os atendidos; os não atendidos continuam no total.
+  - **Status**: "Não Atendimento" mostra só os vazios; "Atendidos" ou um status específico excluem os vazios.
+
+### View — `app/views/templates/dashboard/pagina.html` (menu "Turno")
+- Filtros: **Data**, Considerar data de (Solicitação | Atendimento), **Setor**, **Usuário**, **Status**.
+  Mudar qualquer filtro atualiza os indicadores automaticamente (sem precisar clicar).
+- Indicadores: Itens no Total (destaque), Atendidos, Não Atendimento, % atendido e barras horizontais por status
+  (uma cor só, valor e % ao lado, tooltip por barra, tabela acessível).
+- O gráfico mostra **sempre todos os status**, inclusive os zerados (barra cinza) e mesmo quando o total é 0
+  ou quando o filtro de Status seleciona um único status (ajuste 2026-11-18).
+
+### Controller — `app/controllers/dashboard.py`
+- Somente usuários autenticados (`login_required`).
+- [Assumido] Data padrão = hoje; "Todas as datas" remove o filtro. Base padrão = **data do atendimento**
+  (visão do turno: o que foi atendido hoje + o que está em aberto).
+- [Assumido] Usuário = quem salvou o atendimento por último; com base "Atendimento", data = dia do último salvamento.
+
+---
+
+## M7 — PWA (Progressive Web App)
+Origem: `regras_iniciais/07. estoque_consulta_dashboard_pwa.md`
+
+### Controller — `app/controllers/pwa.py`
+- `/manifest.webmanifest`: nome, `display: standalone`, `start_url`, cores do tema, ícones 192/512/maskable/SVG
+  e atalhos (Atendimento, Interrompidos, Troca de turno, Consulta).
+- `/sw.js` (escopo `/`, sem cache HTTP) e `/offline`.
+
+### Service worker — `app/views/templates/pwa/sw.js`
+- Instalação guarda CSS, JS, ícones, biblioteca de ícones (local) e a página offline.
+- Arquivos estáticos: cache primeiro (URLs versionadas `?v=`). Páginas: rede primeiro.
+- Sem conexão: Consulta já visitada abre da memória; demais páginas mostram "Sem conexão".
+  [Assumido] Páginas autenticadas não são guardadas no aparelho (privacidade); o cache de páginas é apagado ao sair.
+- Formulários (POST) nunca passam pelo cache.
+
+### Atualização automática
+- `APP_VERSION` = hash de `views/static` + `views/templates` calculado ao iniciar; muda a cada deploy com alteração.
+- Versão nova gera service worker novo → instala, assume (`skipWaiting`/`clients.claim`), limpa caches antigos
+  e recarrega a página. Se houver formulário sendo preenchido, mostra "Nova versão disponível" em vez de recarregar.
+- O app verifica atualização ao voltar para a tela e a cada 30 min.
+
+### Ícone e tela de abertura
+- Ícones gerados por `scripts/gerar_icones.py` (T branco sobre #1877F2). Tela de abertura: Android/desktop pelo
+  manifesto (fundo azul + ícone + nome) e tela própria em CSS no app instalado (inclui iOS), 1x por sessão.
+- Biblioteca Lucide servida localmente (`static/js/vendor`), sem depender da internet externa.
+
+### Requisito de infraestrutura
+- **Service worker e instalação exigem HTTPS** (exceto `localhost`). Em `http://<ip>:5001` o sistema funciona
+  normalmente, mas não instala nem usa cache offline. Necessário publicar atrás de HTTPS (proxy reverso com
+  certificado confiável pelos aparelhos).
 
 ---
 
@@ -173,5 +246,8 @@ Origem: `regras_iniciais/06. vagas_capacidade_e_consulta.md`
 | Regra 06: vagas com 7 caixas + saída por Disponível/Finalizado | Concluído — inclui teste de concorrência |
 | Regra 06: CSV com `sep=;` + aviso de precisão do .xlsx | Concluído — testado com o CSV real (66 linhas) |
 | M5 Consulta pública | Concluído — 4 testes |
+| Regra 07: Estoque, Consulta (recebido por/Resp. TS7/detalhes), filtro Programa Original | Concluído — 6 testes |
+| M6 Dashboard Troca de Turno | Concluído — 2 testes (acesso, contagens e todos os filtros) |
+| M7 PWA | Concluído — 5 testes (manifesto, SW/precache, assets versionados, versão, offline); instalação real depende de HTTPS |
 
-Total: 66 testes passando no PostgreSQL (2026-11-17). Pendente: validar os itens [Assumido] com a equipe de Fechamento.
+Total: 79 testes passando no PostgreSQL (2026-11-18). Pendente: validar os itens [Assumido] com a equipe de Fechamento.

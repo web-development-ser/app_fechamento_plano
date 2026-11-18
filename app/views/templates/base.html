@@ -4,15 +4,34 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}TEGAD{% endblock %} · TEGAD</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+  <meta name="theme-color" content="#1877F2">
+  <meta name="description" content="TEGAD — atendimento de itens de reposição">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="TEGAD">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="manifest" href="{{ url_for('pwa.manifest') }}">
+  <link rel="icon" type="image/svg+xml" href="{{ asset('icons/icon.svg') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('icons/favicon-32.png') }}">
+  <link rel="apple-touch-icon" href="{{ asset('icons/apple-touch-icon.png') }}">
+  <link rel="stylesheet" href="{{ asset('css/app.css') }}">
 </head>
 <body>
+<div id="splash" class="splash" aria-hidden="true">
+  <img src="{{ asset('icons/icon-192.png') }}" alt="" width="88" height="88">
+  <strong>TEGAD</strong><span>Fechamento de plano</span>
+</div>
+<script>/* tela de abertura só na 1ª abertura da sessão (app instalado) */
+try { if (sessionStorage.getItem("tegad-splash")) { document.getElementById("splash").remove(); }
+      else { sessionStorage.setItem("tegad-splash", "1"); } } catch (e) {}
+</script>
 {% if g.user %}
 <header class="topbar">
   <a class="brand" href="{{ url_for('atendimento.lista') }}">TEGAD</a>
   <nav class="nav">
     <a href="{{ url_for('atendimento.lista') }}" class="{{ 'ativo' if request.blueprint == 'atendimento' }}"><i data-lucide="list-checks"></i>Atendimento</a>
     <a href="{{ url_for('mapeamentos.pagina') }}" class="{{ 'ativo' if request.blueprint == 'mapeamentos' }}"><i data-lucide="map-pin"></i>Interrompidos</a>
+    <a href="{{ url_for('dashboard.pagina') }}" class="{{ 'ativo' if request.blueprint == 'dashboard' }}"><i data-lucide="layout-dashboard"></i>Turno</a>
     <a href="{{ url_for('consulta.lista') }}" class="{{ 'ativo' if request.blueprint == 'consulta' }}"><i data-lucide="search"></i>Consulta</a>
     <a href="{{ url_for('importacao.pagina') }}" class="{{ 'ativo' if request.blueprint == 'importacao' }}"><i data-lucide="upload"></i>Importação</a>
     {% if g.user.perfil == 'ADMIN' %}
@@ -42,7 +61,11 @@
   {% block content %}{% endblock %}
 </main>
 {% endblock %}
-<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
-<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+<div id="aviso-versao" class="aviso-versao" hidden role="status">
+  <span><i data-lucide="sparkles"></i> Nova versão disponível.</span>
+  <button type="button" class="btn btn-primary btn-sm" onclick="location.reload()">Atualizar agora</button>
+</div>
+<script src="{{ asset('js/vendor/lucide.min.js') }}"></script>
+<script src="{{ asset('js/app.js') }}" data-sw="{{ url_for('pwa.service_worker') }}"></script>
 </body>
 </html>

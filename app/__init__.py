@@ -1,10 +1,25 @@
+import hashlib
 import os
+from pathlib import Path
 
 from flask import Flask, render_template
 
 from app import db
 from app.config import Config
 from app.security import csrf_token, load_current_user, verify_csrf
+
+
+def calcular_versao(app):
+    """Hash do conteúdo de static/ + templates/: muda a cada deploy com alteração de tela/JS,
+    o que força a atualização automática do PWA (service worker novo) e dos arquivos em cache."""
+    h = hashlib.sha256()
+    raiz = Path(app.root_path) / "views"
+    for pasta in ("static", "templates"):
+        for arq in sorted((raiz / pasta).rglob("*")):
+            if arq.is_file():
+                h.update(str(arq.relative_to(raiz)).encode())
+                h.update(arq.read_bytes())
+    return h.hexdigest()[:12]
 
 
 def create_app(overrides=None):
@@ -19,12 +34,20 @@ def create_app(overrides=None):
     # arquivos temporários da pré-visualização de importação
     app.config.setdefault("UPLOAD_DIR", os.environ.get("UPLOAD_DIR") or os.path.join(app.instance_path, "uploads"))
 
+    app.config.setdefault("APP_VERSION", os.environ.get("APP_VERSION") or calcular_versao(app))
+
     db.init_app(app)
     app.before_request(verify_csrf)
     app.before_request(load_current_user)
     app.jinja_env.globals["csrf_token"] = csrf_token
+    from app.models.mapeamento import descrever_local
 
-    from app.controllers import admin, atendimento, auth, consulta, importacao, mapeamentos
+    app.jinja_env.filters["local"] = descrever_local  # 'EST' -> 'Estoque'
+    from app.controllers.pwa import asset
+
+    app.jinja_env.globals["asset"] = asset
+
+    from app.controllers import admin, atendimento, auth, consulta, dashboard, importacao, mapeamentos, pwa
 
     app.register_blueprint(auth.bp)
     app.register_blueprint(admin.bp)
@@ -32,6 +55,8 @@ def create_app(overrides=None):
     app.register_blueprint(importacao.bp)
     app.register_blueprint(mapeamentos.bp)
     app.register_blueprint(consulta.bp)
+    app.register_blueprint(dashboard.bp)
+    app.register_blueprint(pwa.bp)
 
     @app.errorhandler(400)
     @app.errorhandler(403)

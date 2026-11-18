@@ -22,6 +22,7 @@
 <form class="panel" method="get">
   <div class="grid grid-2 grid-4">
     <div><label for="programa">Programa</label><input id="programa" name="programa" value="{{ filtros.programa }}" placeholder="Pesquisar" inputmode="search"></div>
+    <div><label for="prog_orig">Programa Original</label><input id="prog_orig" name="prog_orig" value="{{ filtros.prog_orig }}" placeholder="Pesquisar" inputmode="search"></div>
     <div><label for="item">Item (SKU)</label><input id="item" name="item" value="{{ filtros.item }}" placeholder="Pesquisar" inputmode="search"></div>
     <div><label for="setor">Setor</label>
       <select id="setor" name="setor">
@@ -63,22 +64,27 @@
       <div><span>Prog. Orig. / Doc.</span>{{ r.prog_orig }} / {{ r.doc_orig }}</div>
       <div><span>Setor · Equipto</span>{{ setor(r) }} · {{ r.equipto or '—' }}</div>
       <div><span>Dt. Solic. · Qtd.</span>{{ fmt_data(r.dt_solic) }} · {{ fmt_qtd(r.qtd_reposicao) }}</div>
-      <div><span>Loc. TEGAD</span>{{ r.loc_tegad or '—' }}</div>
+      <div><span>Loc. TEGAD</span>{{ (r.loc_tegad|local) or '—' }}</div>
       <div><span>Recebido em</span>{{ r.dt_recebimento.strftime('%d/%m/%Y %H:%M') if r.dt_recebimento else '—' }}</div>
+      <div><span>Recebido por</span>{{ r.recebido_por or '—' }}</div>
+      <div><span>Resp. TS7</span>{{ r.resp_ts7 or '—' }}</div>
     </div>
+    <a class="btn btn-sm" href="{{ url_for('consulta.detalhe', registro_id=r.id, voltar=request.full_path) }}"><i data-lucide="eye"></i>Ver detalhes</a>
   </div>
   {% endfor %}
 </div>
 
 <table class="tabela">
-  <thead><tr><th>Situação</th><th>Item (SKU)</th><th>Descrição</th><th>Programa</th><th>Prog. Orig.</th><th>Doc.</th><th>Setor</th><th>Equipto</th><th>Dt. Solic.</th><th>Qtd.</th><th>Loc. TEGAD</th><th>Recebido em</th></tr></thead>
+  <thead><tr><th>Situação</th><th>Item (SKU)</th><th>Programa</th><th>Prog. Orig.</th><th>Doc.</th><th>Setor</th><th>Dt. Solic.</th><th>Qtd.</th><th>Loc. TEGAD</th><th>Recebido por</th><th>Resp. TS7</th><th>Recebido em</th><th></th></tr></thead>
   <tbody>
   {% for r in registros %}
   <tr>
-    <td>{{ situacao(r) }}</td><td>{{ r.item }}</td><td>{{ r.descricao or '' }}</td><td>{{ r.programa }}</td>
-    <td>{{ r.prog_orig }}</td><td>{{ r.doc_orig }}</td><td>{{ setor(r) }}</td><td>{{ r.equipto or '—' }}</td>
-    <td>{{ fmt_data(r.dt_solic) }}</td><td class="num">{{ fmt_qtd(r.qtd_reposicao) }}</td><td>{{ r.loc_tegad or '—' }}</td>
+    <td>{{ situacao(r) }}</td><td>{{ r.item }}</td><td>{{ r.programa }}</td>
+    <td>{{ r.prog_orig }}</td><td>{{ r.doc_orig }}</td><td>{{ setor(r) }}</td>
+    <td>{{ fmt_data(r.dt_solic) }}</td><td class="num">{{ fmt_qtd(r.qtd_reposicao) }}</td><td>{{ (r.loc_tegad|local) or '—' }}</td>
+    <td>{{ r.recebido_por or '—' }}</td><td>{{ r.resp_ts7 or '—' }}</td>
     <td>{{ r.dt_recebimento.strftime('%d/%m/%Y %H:%M') if r.dt_recebimento else '—' }}</td>
+    <td><a class="btn btn-sm" href="{{ url_for('consulta.detalhe', registro_id=r.id, voltar=request.full_path) }}" title="Ver detalhes"><i data-lucide="eye"></i>Detalhes</a></td>
   </tr>
   {% endfor %}
   </tbody>

@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Troca de turno{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Troca de turno</h1>
+    <p class="sub">{{ agora.strftime('%d/%m/%Y %H:%M') }} · {{ turno_atual }}</p>
+  </div>
+</div>
+
+<form class="panel" method="get" data-autosubmit>
+  <div class="grid grid-2 grid-4">
+    <div><label for="data">Data</label>
+      <input id="data" name="data" type="date" value="{{ filtros.data or '' }}" title="Deixe vazio para todas as datas"></div>
+    <div><label for="base">Considerar data de</label>
+      <select id="base" name="base">
+        {% for k, nome in bases.items() %}<option value="{{ k }}" {{ 'selected' if filtros.base == k }}>{{ nome }}</option>{% endfor %}
+      </select></div>
+    <div><label for="setor">Setor</label>
+      <select id="setor" name="setor">
+        <option value="">Todos</option>
+        {% for cod, nome in setores.items() %}<option value="{{ cod }}" {{ 'selected' if filtros.setor == cod }}>{{ nome }} ({{ cod }})</option>{% endfor %}
+      </select></div>
+    <div><label for="usuario">Usuário (atendimento)</label>
+      <select id="usuario" name="usuario">
+        <option value="">Todos</option>
+        {% for u in usuarios %}<option value="{{ u.id }}" {{ 'selected' if filtros.usuario == u.id }}>{{ u.nome }}{{ '' if u.ativo else ' (inativo)' }}</option>{% endfor %}
+      </select></div>
+    <div><label for="status">Status</label>
+      <select id="status" name="status">
+        <option value="todos" {{ 'selected' if filtros.status == 'todos' }}>Todos</option>
+        <option value="" {{ 'selected' if filtros.status == '' }}>Não Atendimento</option>
+        <option value="atendidos" {{ 'selected' if filtros.status == 'atendidos' }}>Atendidos</option>
+        {% for s in status_opcoes %}<option {{ 'selected' if filtros.status == s }}>{{ s }}</option>{% endfor %}
+      </select></div>
+  </div>
+  <div class="actions" style="margin-top:10px">
+    <button class="btn btn-primary" type="submit"><i data-lucide="refresh-cw"></i>Atualizar</button>
+    <a class="btn" href="{{ url_for('dashboard.pagina') }}">Hoje</a>
+    <a class="btn btn-link" href="{{ url_for('dashboard.pagina', data='') }}">Todas as datas</a>
+  </div>
+</form>
+
+<div class="resumo" style="margin-bottom:12px">
+  <div class="stat hero"><b>{{ total }}</b><span>Itens no total</span></div>
+  <div class="stat"><b>{{ atendidos }}</b><span>Atendidos</span></div>
+  <div class="stat"><b>{{ nao_atendidos }}</b><span>Não Atendimento</span></div>
+  <div class="stat"><b>{{ ((atendidos * 100 / total)|round|int) if total else 0 }}%</b><span>Atendido</span></div>
+</div>
+
+<section class="panel">
+  <h2>Itens por status</h2>
+  {% if total == 0 %}
+    <p class="sub" style="margin:-4px 0 8px">Nenhum item para os filtros selecionados — todos os status estão zerados.</p>
+  {% endif %}
+  <table class="barras">
+    <caption class="sr-only">Quantidade de itens por status</caption>
+    <thead class="sr-only"><tr><th>Status</th><th>Quantidade</th><th>Percentual</th></tr></thead>
+    <tbody>
+    {% for i in itens %}
+    <tr title="{{ i.status }}: {{ i.n }} item(ns) · {{ i.pct }}%">
+      <th scope="row">{{ i.status }}</th>
+      <td class="barra-cel">
+        <span class="barra-trilho"><span class="barra{{ ' zero' if not i.n }}" style="width: {{ (i.n * 100 / maximo) if maximo else 0 }}%"></span></span>
+      </td>
+      <td class="num"><strong>{{ i.n }}</strong> <span class="muted">{{ i.pct }}%</span></td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

@@ -9,6 +9,7 @@ from app import db
 FUSO = ZoneInfo("America/Sao_Paulo")
 FILAS = ("M", "P", "S")
 VAGAS = tuple(f"{fila}{n:02d}" for fila in FILAS for n in range(1, 21))
+ESTOQUE = "EST"  # localização especial, sem limite de caixas (migration 004)
 CAPACIDADE_VAGA = 7  # caixas (mapeamentos ativos) por vaga — também garantido no banco (migration 003)
 STATUS_LIBERAM = ("Disponível", "Finalizado")  # status do item que tiram a caixa da vaga
 
@@ -62,7 +63,17 @@ def vagas_livres(ocup=None):
 
 
 def vaga_lotada(vaga):
+    if vaga == ESTOQUE:
+        return False
     return ocupacao().get(vaga, 0) >= CAPACIDADE_VAGA
+
+
+def descrever_local(codigo):
+    """Nome exibido da localização: 'EST' -> 'Estoque'; vagas ficam como estão."""
+    if not codigo:
+        return codigo
+    codigo = str(codigo).strip()
+    return "Estoque" if codigo == ESTOQUE else codigo
 
 
 def status_libera(status):

@@ -5,7 +5,7 @@
 <div class="page-head">
   <div>
     <h1>Programas interrompidos</h1>
-    <p class="sub">{{ total_livres }} de {{ total_vagas }} vagas com espaço · {{ total_caixas }} caixas · {{ turno_atual }}</p>
+    <p class="sub">{{ total_livres }} de {{ total_vagas }} vagas com espaço · {{ total_caixas }} caixas nas vagas · {{ no_estoque }} no Estoque · {{ turno_atual }}</p>
   </div>
 </div>
 
@@ -19,6 +19,11 @@
       <input id="documento" name="documento" value="{{ dados.documento }}" required maxlength="50" inputmode="numeric"></div>
   </div>
 
+  <label class="flag-estoque" style="margin-top:12px">
+    <input type="checkbox" id="estoque" name="estoque" value="1" {{ 'checked' if dados.estoque }} data-bloqueia="#vagas-box">
+    <span><i data-lucide="warehouse"></i> Enviar para <strong>Estoque</strong></span>
+  </label>
+  <div id="vagas-box">
   <label style="margin-top:12px">Fila + Posição (vagas com menos de {{ capacidade }} caixas)</label>
   {% if total_livres == 0 %}
     <div class="flash aviso"><i data-lucide="circle-alert"></i>Todas as vagas estão lotadas no momento.</div>
@@ -36,10 +41,11 @@
     </div>
   </fieldset>
   {% endfor %}
+  </div>
 
   <p class="sub" style="margin:10px 0 0"><i data-lucide="info"></i> Data/hora, turno e usuário ({{ g.user.nome }}) são registrados automaticamente.</p>
   <div class="actions" style="margin-top:10px">
-    <button class="btn btn-primary" type="submit" {{ 'disabled' if total_livres == 0 }}><i data-lucide="package-plus"></i>Adicionar caixa</button>
+    <button class="btn btn-primary" type="submit" data-sem-vaga="{{ 'lotado' if total_livres == 0 }}" {{ 'disabled' if total_livres == 0 and not dados.estoque }}><i data-lucide="package-plus"></i>Adicionar caixa</button>
   </div>
 </form>
 
@@ -50,7 +56,7 @@
     {% for m in ativos %}
     <div class="card">
       <div class="card-top">
-        <strong>{{ m.vaga }} <span class="muted" style="font-weight:400;font-size:12px">{{ ocupacao.get(m.vaga, 0) }}/{{ capacidade }}</span></strong>
+        <strong>{{ m.vaga|local }}{% if m.vaga != 'EST' %} <span class="muted" style="font-weight:400;font-size:12px">{{ ocupacao.get(m.vaga, 0) }}/{{ capacidade }}</span>{% endif %}</strong>
         {% if m.tem_registro %}<span class="badge azul">No atendimento</span>
         {% else %}<span class="badge">Aguardando importação</span>{% endif %}
       </div>
@@ -62,7 +68,7 @@
       </div>
       {% if g.user.perfil == 'ADMIN' %}
       <form method="post" action="{{ url_for('mapeamentos.liberar', mapeamento_id=m.id) }}"
-            data-confirm="Retirar manualmente esta caixa da vaga {{ m.vaga }}?">
+            data-confirm="Retirar manualmente esta caixa de {{ m.vaga|local }}?">
         <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
         <button class="btn btn-sm" type="submit"><i data-lucide="unlock"></i>Retirar caixa</button>
       </form>
@@ -78,7 +84,7 @@
   <div class="cards" style="display:grid">
     {% for m in liberados %}
     <div class="card">
-      <div class="card-top"><strong>{{ m.vaga }}</strong><span class="badge verde">Retirada</span></div>
+      <div class="card-top"><strong>{{ m.vaga|local }}</strong><span class="badge verde">Retirada</span></div>
       <div class="kv">
         <div><span>Programa / Doc.</span>{{ m.programa }} / {{ m.documento }}</div>
         <div><span>Retirada em</span>{{ dt(m.liberado_em) }}</div>

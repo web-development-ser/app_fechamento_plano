@@ -13,6 +13,7 @@
 <form class="panel" method="get">
   <div class="grid grid-2 grid-4">
     <div><label for="programa">Programa</label><input id="programa" name="programa" value="{{ filtros.programa }}" placeholder="Pesquisar" inputmode="search"></div>
+    <div><label for="prog_orig">Programa Original</label><input id="prog_orig" name="prog_orig" value="{{ filtros.prog_orig }}" placeholder="Pesquisar" inputmode="search"></div>
     <div><label for="item">Item (SKU)</label><input id="item" name="item" value="{{ filtros.item }}" placeholder="Pesquisar" inputmode="search"></div>
     <div><label for="status">Status</label>
       <select id="status" name="status">
@@ -45,7 +46,7 @@
   <div class="card">
     <div class="card-top">
       <strong>{{ r.item }}</strong>
-      <span>{% if r.loc_tegad %}<span class="badge azul">{{ r.loc_tegad }}</span> {% endif %}<span class="badge">#{{ r.id }}</span></span>
+      <span>{% if r.loc_tegad %}<span class="badge azul">{{ r.loc_tegad|local }}</span> {% endif %}<span class="badge">#{{ r.id }}</span></span>
     </div>
     <div class="kv">
       <div><span>Programa</span>{{ r.programa }}</div>
@@ -65,7 +66,7 @@
   <tr>
     <td>{{ r.id }}</td><td>{{ r.programa }}</td><td>{{ r.item }}</td><td>{{ r.prog_orig }}</td><td>{{ r.doc_orig }}</td>
     <td>{{ r.equipto or '—' }}</td><td>{{ fmt_data(r.dt_solic) }}</td><td class="num">{{ fmt_qtd(r.qtd_reposicao) }}</td>
-    <td>{{ r.loc_tegad or '—' }}</td>
+    <td>{{ (r.loc_tegad|local) or '—' }}</td>
     <td>{% if r.status %}<span class="badge azul">{{ r.status }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
     <td><a class="btn btn-primary btn-sm" href="{{ url_for('atendimento.editar', registro_id=r.id, voltar=voltar) }}"><i data-lucide="clipboard-pen"></i>Atender</a></td>
   </tr>

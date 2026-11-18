@@ -21,13 +21,17 @@ app/
     atendimento.py
     importacao.py
     mapeamentos.py
-    consulta.py           consulta pública (sem login, somente leitura)
+    consulta.py           consulta pública + detalhes (sem login, somente leitura)
+    dashboard.py          troca de turno (login)
+    pwa.py                manifesto, service worker, offline, asset() versionado
   views/                  V — apresentação
-    templates/            Jinja2 (base.html, _flash.html, login, senha, admin/, atendimento/, importacao/, mapeamentos/, consulta/)
+    templates/            Jinja2 (base.html, _flash.html, login, senha, admin/, atendimento/, importacao/, mapeamentos/, consulta/, dashboard/, pwa/)
     static/css/app.css    tema Facebook, mobile first (tokens em :root)
-    static/js/app.js      mostrar senha, confirmações, ícones Lucide
+    static/js/app.js      mostrar senha, confirmações, flag Estoque, filtros automáticos, registro do PWA
+    static/js/vendor/     lucide.min.js (local, para funcionar offline)
+    static/icons/         ícones do PWA (gerados por scripts/gerar_icones.py)
 migrations/               NNN_descricao.sql aplicadas em ordem (tabela schema_migrations)
-scripts/                  init_db.py, create_admin.py
+scripts/                  setup_db.py, init_db.py, create_admin.py, gerar_icones.py
 tests/                    pytest (parser sem banco; integração com TEST_DATABASE_URL)
 ```
 

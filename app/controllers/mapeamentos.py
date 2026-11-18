@@ -13,14 +13,18 @@ def _validar(form):
         "programa": mapeamento_model.normalizar_chave(form.get("programa")),
         "documento": mapeamento_model.normalizar_chave(form.get("documento")),
         "vaga": (form.get("vaga") or "").strip().upper(),
+        "estoque": form.get("estoque") == "1",
     }
+    # flag Estoque: direciona automaticamente e ignora qualquer vaga enviada
+    if dados["estoque"]:
+        dados["vaga"] = mapeamento_model.ESTOQUE
     erros = []
     if not dados["programa"] or len(dados["programa"]) > 50:
         erros.append("Programa é obrigatório (máx. 50 caracteres).")
     if not dados["documento"] or len(dados["documento"]) > 50:
         erros.append("Documento é obrigatório (máx. 50 caracteres).")
-    if dados["vaga"] not in mapeamento_model.VAGAS:
-        erros.append("Selecione uma vaga (Fila + Posição) válida.")
+    if not dados["estoque"] and dados["vaga"] not in mapeamento_model.VAGAS:
+        erros.append("Selecione uma vaga (Fila + Posição) válida ou marque Estoque.")
     elif mapeamento_model.vaga_lotada(dados["vaga"]):
         erros.append(f"A vaga {dados['vaga']} está lotada ({mapeamento_model.CAPACIDADE_VAGA} caixas). "
                      "Escolha outra.")
@@ -30,7 +34,7 @@ def _validar(form):
 @bp.route("/", methods=["GET", "POST"])
 @login_required
 def pagina():
-    dados = {"programa": "", "documento": "", "vaga": ""}
+    dados = {"programa": "", "documento": "", "vaga": "", "estoque": False}
     status_http = 200
     if request.method == "POST":
         dados, erros = _validar(request.form)
@@ -44,7 +48,9 @@ def pagina():
                 db.rollback()
                 erros.append(str(exc))
             else:
-                flash(f"Caixa adicionada à vaga {gravado['vaga']}: Programa {gravado['programa']} / "
+                destino = ("enviada para o Estoque" if gravado["vaga"] == mapeamento_model.ESTOQUE
+                           else f"adicionada à vaga {gravado['vaga']}")
+                flash(f"Caixa {destino}: Programa {gravado['programa']} / "
                       f"Doc. {gravado['documento']} ({mapeamento_model.descrever_turno(gravado['turno'])}).",
                       "sucesso")
                 return redirect(url_for("mapeamentos.pagina"))
@@ -63,7 +69,8 @@ def pagina():
         total_vagas=len(mapeamento_model.VAGAS),
         ocupacao=ocup,
         capacidade=mapeamento_model.CAPACIDADE_VAGA,
-        total_caixas=sum(ocup.values()),
+        total_caixas=sum(n for v, n in ocup.items() if v != mapeamento_model.ESTOQUE),
+        no_estoque=ocup.get(mapeamento_model.ESTOQUE, 0),
         ativos=mapeamento_model.listar_ativos(),
         liberados=mapeamento_model.listar_liberados(),
         agora=momento,

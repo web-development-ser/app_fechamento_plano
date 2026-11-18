@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Sem conexão{% endblock %}
+{% block body %}
+<div class="login-wrap">
+  <div class="login-box">
+    <div class="panel empty">
+      <img src="{{ asset('icons/icon-192.png') }}" alt="" width="64" height="64" style="border-radius:14px">
+      <h1 style="margin:12px 0 4px">Sem conexão</h1>
+      <p>Não foi possível falar com o servidor TEGAD. Verifique a rede e tente novamente.</p>
+      <p class="sub">Páginas da Consulta já abertas antes continuam disponíveis.</p>
+      <a class="btn btn-primary" href="javascript:location.reload()"><i data-lucide="refresh-cw"></i>Tentar novamente</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
