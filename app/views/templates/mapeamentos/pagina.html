@@ -76,13 +76,11 @@
         <div><span>Registro</span>{{ dt(m.registrado_em) }}</div>
         <div><span>Turno · Usuário</span>{{ descrever_turno(m.turno) }} · {{ m.usuario_nome }}</div>
       </div>
-      {% if g.user.perfil == 'ADMIN' %}
       <form method="post" action="{{ url_for('mapeamentos.liberar', mapeamento_id=m.id) }}"
-            data-confirm="Retirar manualmente esta caixa de {{ m.vaga|local }}?">
+            data-confirm="Retirar esta caixa de {{ m.vaga|local }}? A vaga fica livre para outra caixa.">
         <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
         <button class="btn btn-sm" type="submit"><i data-lucide="unlock"></i>Retirar caixa</button>
       </form>
-      {% endif %}
     </div>
     {% endfor %}
   </div>

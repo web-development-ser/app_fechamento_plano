@@ -140,7 +140,9 @@ Origem: `regras_iniciais/04. mapeamentos_e_ajustes.md`
 ### Controller — `app/controllers/mapeamentos.py`
 - Valida campos; vaga lotada (7 caixas) ou Programa+Documento ativo duplicado → mensagem, nada gravado.
 - Auditoria `criar_mapeamento`; liberação automática via atendimento (`liberar_mapeamento`).
-- [Assumido] Liberação manual (corrigir reserva errada): somente ADMIN, auditada (`liberar_mapeamento_manual`).
+- **Retirada manual da caixa** (botão "Retirar caixa", com confirmação): permitida a **qualquer usuário logado**,
+  as mesmas pessoas que atendem os itens (regra 09). Libera o espaço na vaga na hora; grava quem retirou
+  (`liberado_por`) e auditoria `liberar_mapeamento_manual`.
 - Atendimento salvo com Disponível/Finalizado mas com outros itens pendentes: caixa fica na vaga e a mensagem
   informa quantos itens faltam. Salvar sem status grava Loc. TEGAD e mantém a caixa.
 - [Assumido] Atendimento sem mapeamento: exibe "Sem mapeamento" e pode ser salvo normalmente.

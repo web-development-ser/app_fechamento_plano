@@ -3,7 +3,7 @@ from flask import Blueprint, abort, flash, g, redirect, render_template, request
 from app import db
 from app.models import auditoria
 from app.models import mapeamento as mapeamento_model
-from app.security import admin_required, login_required
+from app.security import login_required
 
 bp = Blueprint("mapeamentos", __name__, url_prefix="/mapeamentos")
 
@@ -84,9 +84,9 @@ def pagina():
 
 
 @bp.route("/<int:mapeamento_id>/liberar", methods=["POST"])
-@admin_required
+@login_required
 def liberar(mapeamento_id):
-    """Liberação manual (correção de reserva errada) — somente administrador."""
+    """Retirada manual da caixa (libera espaço na vaga) — qualquer usuário que atende itens (regra 09)."""
     if not mapeamento_model.liberar(mapeamento_id, g.user):
         abort(404)
     auditoria.registrar("liberar_mapeamento_manual", "mapeamentos", mapeamento_id)

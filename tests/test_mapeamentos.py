@@ -155,12 +155,34 @@ def test_atendimento_sem_mapeamento(app, admin_client):
     assert r.status_code == 302
 
 
-def test_liberacao_manual_somente_admin(app, client):
+def test_retirada_manual_por_usuario_que_atende(app, client):
+    """Regra 09: quem atende os itens (perfil USUARIO) também pode retirar a caixa e liberar a vaga."""
     criar_usuario(app)
-    criar_usuario(app, "ana", "segredo1", "USUARIO")
+    uid = criar_usuario(app, "ana", "segredo1", "USUARIO")
     login(client, "ana", "segredo1")
-    assert _mapear(client, "1", "1", "M01").status_code == 302  # usuário comum cadastra
-    assert client.post("/mapeamentos/1/liberar", data={"_csrf": csrf(client)}).status_code == 403
+    for i in range(7):  # lota a vaga M01
+        assert _mapear(client, f"1{i}", "1", "M01").status_code == 302
+    html = client.get("/mapeamentos/").get_data(as_text=True)
+    assert 'value="M01"' not in html and "Retirar caixa" in html  # lotada; botão visível para USUARIO
+
+    r = client.post("/mapeamentos/1/liberar", data={"_csrf": csrf(client)}, follow_redirects=True)
+    assert r.status_code == 200 and "Caixa retirada da vaga manualmente" in r.get_data(as_text=True)
+    assert 'value="M01"' in client.get("/mapeamentos/").get_data(as_text=True)  # vaga livre de novo (6/7)
+
+    from app import db
+    with app.app_context():
+        mp = db.query_one("SELECT * FROM mapeamentos WHERE id = 1")
+        assert mp["liberado_em"] is not None and mp["liberado_por"] == uid
+        aud = db.query_one("SELECT * FROM auditoria WHERE acao = 'liberar_mapeamento_manual'")
+        assert aud["usuario_id"] == uid and aud["entidade_id"] == "1"
+    # retirar de novo a mesma caixa: não existe mais caixa ativa
+    assert client.post("/mapeamentos/1/liberar", data={"_csrf": csrf(client)}).status_code == 404
+
+
+def test_retirada_exige_login(app, client):
+    criar_usuario(app)
+    r = client.post("/mapeamentos/1/liberar", data={"_csrf": csrf(client)})
+    assert r.status_code == 302 and "/login" in r.headers["Location"]
 
 
 def test_status_que_nao_liberam_mantem_a_caixa(app, admin_client):
