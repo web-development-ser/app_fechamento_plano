@@ -23,11 +23,12 @@ def ler_filtros(args, status_padrao=""):
     if filtros["status"] not in ("", "todos", "atendidos", *registro_model.STATUS_OPCOES):
         filtros["status"] = status_padrao
     filtros["setor"] = args.get("setor", "") if args.get("setor", "") in registro_model.SETORES else ""
-    dt = args.get("dt_solic", "").strip()
-    try:
-        filtros["dt_solic"] = date.fromisoformat(dt) if dt else None
-    except ValueError:
-        filtros["dt_solic"] = None
+    for campo in ("dt_solic", "dt_modificacao"):
+        dt = args.get(campo, "").strip()
+        try:
+            filtros[campo] = date.fromisoformat(dt) if dt else None
+        except ValueError:
+            filtros[campo] = None
     return filtros
 
 

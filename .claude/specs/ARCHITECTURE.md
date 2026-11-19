@@ -31,6 +31,7 @@ app/
     static/js/vendor/     lucide.min.js (local, para funcionar offline)
     static/icons/         ícones do PWA (gerados por scripts/gerar_icones.py)
 migrations/               NNN_descricao.sql aplicadas em ordem (tabela schema_migrations)
+deploy/Caddyfile          proxy HTTPS (CA interna) na porta 5001 → app:5001 — usado pelo docker-compose
 scripts/                  setup_db.py, init_db.py, create_admin.py, gerar_icones.py
 tests/                    pytest (parser sem banco; integração com TEST_DATABASE_URL)
 ```

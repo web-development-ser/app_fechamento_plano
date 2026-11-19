@@ -114,12 +114,21 @@ def criar(programa, documento, vaga, usuario, momento=None):
     return row["id"], params
 
 
-def listar_ativos():
+def listar_ativos(programa=None, documento=None):
+    """Caixas nas vagas (ativas), com filtros opcionais por Programa e Documento (busca parcial)."""
+    conds, params = ["m.liberado_em IS NULL"], {}
+    if programa:
+        conds.append("m.programa ILIKE %(programa)s")
+        params["programa"] = f"%{normalizar_chave(programa)}%"
+    if documento:
+        conds.append("m.documento ILIKE %(documento)s")
+        params["documento"] = f"%{normalizar_chave(documento)}%"
     return db.query(
         "SELECT m.*, EXISTS (SELECT 1 FROM agrupamento_registro r"
         "  WHERE upper(trim(r.prog_orig)) = m.programa AND upper(trim(r.doc_orig)) = m.documento"
         " ) AS tem_registro"
-        " FROM mapeamentos m WHERE m.liberado_em IS NULL ORDER BY m.vaga"
+        " FROM mapeamentos m WHERE " + " AND ".join(conds) + " ORDER BY m.vaga, m.registrado_em",
+        params,
     )
 
 

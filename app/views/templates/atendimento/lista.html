@@ -14,7 +14,7 @@
   <div class="grid grid-2 grid-4">
     <div><label for="programa">Programa</label><input id="programa" name="programa" value="{{ filtros.programa }}" placeholder="Pesquisar" inputmode="search"></div>
     <div><label for="prog_orig">Programa Original</label><input id="prog_orig" name="prog_orig" value="{{ filtros.prog_orig }}" placeholder="Pesquisar" inputmode="search"></div>
-    <div><label for="item">Item (SKU)</label><input id="item" name="item" value="{{ filtros.item }}" placeholder="Pesquisar" inputmode="search"></div>
+    <div><label for="dt_modificacao">Última modificação</label><input id="dt_modificacao" name="dt_modificacao" type="date" value="{{ filtros.dt_modificacao or '' }}" title="Data em que o atendimento foi salvo pela última vez"></div>
     <div><label for="status">Status</label>
       <select id="status" name="status">
         <option value="" {{ 'selected' if filtros.status == '' }}>Vazio</option>

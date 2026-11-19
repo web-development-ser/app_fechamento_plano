@@ -36,6 +36,11 @@ def create_app(overrides=None):
 
     app.config.setdefault("APP_VERSION", os.environ.get("APP_VERSION") or calcular_versao(app))
 
+    if app.config.get("TRUST_PROXY"):
+        from werkzeug.middleware.proxy_fix import ProxyFix
+
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
+
     db.init_app(app)
     app.before_request(verify_csrf)
     app.before_request(load_current_user)

@@ -41,14 +41,16 @@ Origem: `regras_iniciais/2. interface_edição_view.md`
 
 ### Model — `app/models/registro.py`
 - Tabela `agrupamento_registro` (dados TOTVS + campos de atendimento + rastreabilidade).
-- Status vazio = `NULL`. Opções: Agrupado, Disponível, Finalizado, Barberan, 3DB (CHECK no banco).
+- Status vazio = `NULL`. Opções: Agrupado, Disponível, Finalizado, Barberan, 3DB, **Floco, PS7, Sala de Cortes**
+  (regra 08, migration 005) — CHECK no banco. Os novos status não retiram a caixa da vaga (só Disponível/Finalizado).
 - Loc. TEGAD: vaga do mapeamento (M01…S20), preenchida pelo sistema — somente leitura (migration 002).
 - Resp. TS7: texto livre, até 150 caracteres (ex.: "sergio") (migration 002).
 - Filtros com SQL parametrizado; paginação.
 
 ### View — `app/views/templates/atendimento/lista.html`, `atendimento/editar.html`
 - Lista: ID, Programa, Item, Prog. Orig., Doc., Equipto, Dt. Solic., Qtd. Reposição + botão "Atender".
-- Filtros visíveis: Programa, **Programa Original** (ao lado de Programa, regra 07), Item (SKU).
+- Filtros visíveis: Programa, **Programa Original** (ao lado de Programa, regra 07), **Última modificação**
+  (data em que o atendimento foi salvo pela última vez, fuso de São Paulo — substitui o filtro Item/SKU, regra 08).
   Recolhíveis ("Mais filtros"): Documento, Equipamento, Data de Solicitação. Todos combinam entre si (E lógico).
 - Mensagem vazia: "Nenhum registro encontrado para os filtros selecionados."
 - Tela de atendimento: Informações gerais (somente leitura) + formulário (Data/Hora de recebimento,
@@ -132,6 +134,8 @@ Origem: `regras_iniciais/04. mapeamentos_e_ajustes.md`
 - Mobile first: Programa/Documento em 2 colunas; vagas como botões grandes por fila (5 por linha no celular, 10 no tablet/desktop).
 - Só vagas com espaço são exibidas, cada uma com a ocupação (ex.: `3/7`); topo mostra vagas com espaço, total de caixas e turno.
 - Lista "Caixas nas vagas" (indica se o registro já está no atendimento ou aguarda importação) e últimas caixas retiradas.
+- Filtros das caixas nas vagas: **Programa** e **Documento** (busca parcial, combináveis; parâmetros `f_programa`,
+  `f_documento`); o título mostra "N de total" quando filtrado (regra 08).
 
 ### Controller — `app/controllers/mapeamentos.py`
 - Valida campos; vaga lotada (7 caixas) ou Programa+Documento ativo duplicado → mensagem, nada gravado.
@@ -225,10 +229,18 @@ Origem: `regras_iniciais/07. estoque_consulta_dashboard_pwa.md`
   manifesto (fundo azul + ícone + nome) e tela própria em CSS no app instalado (inclui iOS), 1x por sessão.
 - Biblioteca Lucide servida localmente (`static/js/vendor`), sem depender da internet externa.
 
-### Requisito de infraestrutura
-- **Service worker e instalação exigem HTTPS** (exceto `localhost`). Em `http://<ip>:5001` o sistema funciona
-  normalmente, mas não instala nem usa cache offline. Necessário publicar atrás de HTTPS (proxy reverso com
-  certificado confiável pelos aparelhos).
+### Requisito de infraestrutura — HTTPS (regra 08: "o PWA não funcionou")
+- **Causa:** service worker e instalação só funcionam em contexto seguro (HTTPS ou `localhost`). Servido em
+  `http://<ip>:5001` pelo Docker, o navegador não registra o service worker nem oferece instalar.
+- **Solução no docker-compose:** serviço `proxy` (Caddy 2.8.4, `deploy/Caddyfile`) publica a porta **5001 com HTTPS**
+  e encaminha para a aplicação (que não é mais publicada diretamente). Quem acessar `http://<ip>:5001` é
+  redirecionado para `https://<ip>:5001`.
+- Certificado emitido pela **CA interna do Caddy** para os endereços de `TEGAD_ENDERECOS` (.env). A CA fica no volume
+  `caddy_data` (não apagar). **Cada aparelho precisa confiar na CA uma vez**: baixar `https://<ip>:5001/tegad-ca.crt`
+  e instalar como certificado raiz confiável (passo a passo no README). Sem isso o navegador mostra aviso de
+  certificado e **o PWA continua sem funcionar**.
+- Aplicação atrás do proxy: `TRUST_PROXY=1` (ProxyFix, 1 salto) e `SESSION_COOKIE_SECURE=1`.
+- Alternativa da TI: substituir `tls internal` por um certificado da empresa já confiável nos aparelhos.
 
 ---
 
@@ -249,5 +261,7 @@ Origem: `regras_iniciais/07. estoque_consulta_dashboard_pwa.md`
 | Regra 07: Estoque, Consulta (recebido por/Resp. TS7/detalhes), filtro Programa Original | Concluído — 6 testes |
 | M6 Dashboard Troca de Turno | Concluído — 2 testes (acesso, contagens e todos os filtros) |
 | M7 PWA | Concluído — 5 testes (manifesto, SW/precache, assets versionados, versão, offline); instalação real depende de HTTPS |
+| Regra 08: filtro Última modificação, status Floco/PS7/Sala de Cortes, filtros das caixas | Concluído — 4 testes |
+| Regra 08: HTTPS para o PWA (Caddy no docker-compose + ProxyFix) | Implementado — ProxyFix testado (2 testes); Caddyfile/compose **não executados** (sem Docker/Caddy no ambiente de desenvolvimento) |
 
-Total: 79 testes passando no PostgreSQL (2026-11-18). Pendente: validar os itens [Assumido] com a equipe de Fechamento.
+Total: 86 testes passando no PostgreSQL (2026-11-19). Pendente: validar os itens [Assumido] com a equipe de Fechamento.

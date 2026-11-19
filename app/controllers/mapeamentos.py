@@ -59,6 +59,7 @@ def pagina():
         status_http = 400
 
     momento = mapeamento_model.agora()
+    filtro = {k: request.args.get(f"f_{k}", "").strip()[:50] for k in ("programa", "documento")}
     ocup = mapeamento_model.ocupacao()
     livres = mapeamento_model.vagas_livres(ocup)
     return render_template(
@@ -71,7 +72,10 @@ def pagina():
         capacidade=mapeamento_model.CAPACIDADE_VAGA,
         total_caixas=sum(n for v, n in ocup.items() if v != mapeamento_model.ESTOQUE),
         no_estoque=ocup.get(mapeamento_model.ESTOQUE, 0),
-        ativos=mapeamento_model.listar_ativos(),
+        ativos=mapeamento_model.listar_ativos(filtro["programa"], filtro["documento"]),
+        filtro=filtro,
+        filtro_ativo=bool(filtro["programa"] or filtro["documento"]),
+        total_ativos=sum(ocup.values()),
         liberados=mapeamento_model.listar_liberados(),
         agora=momento,
         turno_atual=mapeamento_model.descrever_turno(mapeamento_model.turno_de(momento)),

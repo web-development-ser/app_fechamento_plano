@@ -50,8 +50,18 @@
 </form>
 
 <section class="panel">
-  <h2>Caixas nas vagas ({{ ativos|length }})</h2>
-  {% if not ativos %}<p class="empty">Nenhuma caixa nas vagas.</p>{% endif %}
+  <h2>Caixas nas vagas ({{ ativos|length }}{% if filtro_ativo %} de {{ total_ativos }}{% endif %})</h2>
+  <form method="get" class="grid grid-2" style="margin-bottom:10px" role="search">
+    <div><label for="f_programa">Programa</label>
+      <input id="f_programa" name="f_programa" value="{{ filtro.programa }}" placeholder="Filtrar" inputmode="search" maxlength="50"></div>
+    <div><label for="f_documento">Documento</label>
+      <input id="f_documento" name="f_documento" value="{{ filtro.documento }}" placeholder="Filtrar" inputmode="search" maxlength="50"></div>
+    <div class="actions" style="grid-column:1/-1">
+      <button class="btn btn-sm" type="submit"><i data-lucide="search"></i>Filtrar caixas</button>
+      {% if filtro_ativo %}<a class="btn btn-link btn-sm" href="{{ url_for('mapeamentos.pagina') }}">Limpar</a>{% endif %}
+    </div>
+  </form>
+  {% if not ativos %}<p class="empty">{{ 'Nenhuma caixa encontrada para o filtro.' if filtro_ativo else 'Nenhuma caixa nas vagas.' }}</p>{% endif %}
   <div class="cards" style="display:grid">
     {% for m in ativos %}
     <div class="card">

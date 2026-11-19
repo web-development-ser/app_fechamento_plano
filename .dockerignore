@@ -11,3 +11,4 @@ uploads/
 *.md
 Dockerfile
 docker-compose.yml
+deploy/

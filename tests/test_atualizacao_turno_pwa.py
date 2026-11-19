@@ -83,7 +83,7 @@ def test_filtros_programa_e_programa_original_combinados(app, admin_client):
                                    _linha(222, "A3", orig=555)]))
     html = admin_client.get("/atendimento/").get_data(as_text=True)
     assert 'name="prog_orig"' in html
-    assert html.index('name="programa"') < html.index('name="prog_orig"') < html.index('name="item"')
+    assert html.index('name="programa"') < html.index('name="prog_orig"') < html.index('name="dt_modificacao"')
     html = admin_client.get("/atendimento/?programa=111&prog_orig=555").get_data(as_text=True)
     assert "A1" in html and "A2" not in html and "A3" not in html
     html = admin_client.get("/atendimento/?prog_orig=555").get_data(as_text=True)

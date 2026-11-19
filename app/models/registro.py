@@ -1,7 +1,7 @@
 """SQL da tabela agrupamento_registro (consulta e atendimento)."""
 from app import db
 
-STATUS_OPCOES = ("Agrupado", "Disponível", "Finalizado", "Barberan", "3DB")
+STATUS_OPCOES = ("Agrupado", "Disponível", "Finalizado", "Barberan", "3DB", "Floco", "PS7", "Sala de Cortes")
 RESP_TS7_MAX = 150
 # setor identificado pelo prefixo do Equipto
 SETORES = {"S7S": "Serigrafia", "S7M": "Montagem", "S7P": "Pintura"}
@@ -18,6 +18,7 @@ _FILTROS = {
     "doc": "doc_orig ILIKE %(doc)s",
     "equipto": "equipto ILIKE %(equipto)s",
     "dt_solic": "dt_solic = %(dt_solic)s",
+    "dt_modificacao": "(atualizado_em AT TIME ZONE 'America/Sao_Paulo')::date = %(dt_modificacao)s",
 }
 _LIKE = {"programa", "prog_orig", "item", "doc", "equipto"}
 
