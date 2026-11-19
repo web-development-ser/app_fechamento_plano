@@ -23,7 +23,7 @@ class Config:
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
     PAGE_SIZE = 50
-    # atrás do proxy HTTPS (Caddy no docker-compose): confia em X-Forwarded-Proto/For de 1 salto
+    # atrás de um proxy HTTPS (opcional, desligado por padrão): confia em X-Forwarded-Proto/For de 1 salto
     TRUST_PROXY = os.environ.get("TRUST_PROXY", "0") == "1"
     # cookie de sessão só por HTTPS quando servido pelo proxy
     SESSION_COOKIE_SECURE = os.environ.get("SESSION_COOKIE_SECURE", "0") == "1"

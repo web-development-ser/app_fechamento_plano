@@ -73,10 +73,10 @@ def test_filtrar_caixas_por_programa_e_documento(app, admin_client):
     assert "Nenhuma caixa encontrada para o filtro." in html
 
 
-# ---------- HTTPS para o PWA (Docker + Caddy) ----------
+# ---------- suporte a proxy HTTPS (opcional) ----------
 
 def test_proxy_https_reconhecido_quando_habilitado(app):
-    """Com TRUST_PROXY, a aplicação atrás do Caddy enxerga a requisição como HTTPS."""
+    """Com TRUST_PROXY, a aplicação atrás de um proxy enxerga a requisição como HTTPS."""
     from werkzeug.middleware.proxy_fix import ProxyFix
 
     from app import create_app

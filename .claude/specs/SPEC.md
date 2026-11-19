@@ -231,18 +231,14 @@ Origem: `regras_iniciais/07. estoque_consulta_dashboard_pwa.md`
   manifesto (fundo azul + ícone + nome) e tela própria em CSS no app instalado (inclui iOS), 1x por sessão.
 - Biblioteca Lucide servida localmente (`static/js/vendor`), sem depender da internet externa.
 
-### Requisito de infraestrutura — HTTPS (regra 08: "o PWA não funcionou")
-- **Causa:** service worker e instalação só funcionam em contexto seguro (HTTPS ou `localhost`). Servido em
-  `http://<ip>:5001` pelo Docker, o navegador não registra o service worker nem oferece instalar.
-- **Solução no docker-compose:** serviço `proxy` (Caddy 2.8.4, `deploy/Caddyfile`) publica a porta **5001 com HTTPS**
-  e encaminha para a aplicação (que não é mais publicada diretamente). Quem acessar `http://<ip>:5001` é
-  redirecionado para `https://<ip>:5001`.
-- Certificado emitido pela **CA interna do Caddy** para os endereços de `TEGAD_ENDERECOS` (.env). A CA fica no volume
-  `caddy_data` (não apagar). **Cada aparelho precisa confiar na CA uma vez**: baixar `https://<ip>:5001/tegad-ca.crt`
-  e instalar como certificado raiz confiável (passo a passo no README). Sem isso o navegador mostra aviso de
-  certificado e **o PWA continua sem funcionar**.
-- Aplicação atrás do proxy: `TRUST_PROXY=1` (ProxyFix, 1 salto) e `SESSION_COOKIE_SECURE=1`.
-- Alternativa da TI: substituir `tls internal` por um certificado da empresa já confiável nos aparelhos.
+### Requisito de infraestrutura — HTTPS
+- Service worker e instalação só funcionam em contexto seguro (HTTPS ou `localhost`). Em `http://<ip>:5001`
+  o sistema funciona normalmente, mas não instala nem usa cache offline (o JS só registra o SW em contexto seguro).
+- 2026-11-19: o proxy Caddy com CA interna (regra 08) foi **revertido** a pedido do usuário. Sem `TEGAD_ENDERECOS`
+  configurado, o certificado saiu só para `localhost` e o acesso pelo IP parou. O docker-compose voltou a publicar
+  a aplicação direto em HTTP na porta 5001.
+- Para ativar o PWA depois: proxy HTTPS com certificado confiável pelos aparelhos (definir com a TI) +
+  `TRUST_PROXY=1` e `SESSION_COOKIE_SECURE=1` no `.env` (suporte já existe na aplicação, desligado por padrão).
 
 ---
 
@@ -264,6 +260,6 @@ Origem: `regras_iniciais/07. estoque_consulta_dashboard_pwa.md`
 | M6 Dashboard Troca de Turno | Concluído — 2 testes (acesso, contagens e todos os filtros) |
 | M7 PWA | Concluído — 5 testes (manifesto, SW/precache, assets versionados, versão, offline); instalação real depende de HTTPS |
 | Regra 08: filtro Última modificação, status Floco/PS7/Sala de Cortes, filtros das caixas | Concluído — 4 testes |
-| Regra 08: HTTPS para o PWA (Caddy no docker-compose + ProxyFix) | Implementado — ProxyFix testado (2 testes); Caddyfile/compose **não executados** (sem Docker/Caddy no ambiente de desenvolvimento) |
+| Regra 08: HTTPS para o PWA | **Revertido** em 2026-11-19 (proxy Caddy removido do compose); suporte a proxy (ProxyFix, desligado por padrão) mantido e testado |
 
 Total: 86 testes passando no PostgreSQL (2026-11-19). Pendente: validar os itens [Assumido] com a equipe de Fechamento.

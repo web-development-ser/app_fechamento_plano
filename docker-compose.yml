@@ -4,9 +4,8 @@ services:
     image: tegad-fechamento:latest
     container_name: tegad-fechamento
     restart: unless-stopped
-    # sem porta publicada: o acesso externo passa pelo proxy HTTPS (serviço "proxy")
-    expose:
-      - "5001"
+    ports:
+      - "${APP_PORT:-5001}:5001"
     env_file:
       - .env          # SECRET_KEY, DATABASE_URL (PostgreSQL externo), MAX_UPLOAD_MB
     environment:
@@ -14,35 +13,8 @@ services:
       TZ: America/Sao_Paulo
       PGTZ: America/Sao_Paulo
       RUN_MIGRATIONS: "1"
-      TRUST_PROXY: "1"            # confia no X-Forwarded-Proto do Caddy
-      SESSION_COOKIE_SECURE: "1"  # cookie de sessão só via HTTPS
     logging:
       driver: json-file
       options:
         max-size: "10m"
         max-file: "3"
-
-  proxy:
-    image: caddy:2.8.4-alpine
-    container_name: tegad-proxy
-    restart: unless-stopped
-    depends_on:
-      - app
-    ports:
-      - "${APP_PORT:-5001}:5001"  # HTTPS (e redireciona http:// na mesma porta)
-    environment:
-      # endereços pelos quais o sistema é acessado (IP e/ou nome), separados por vírgula
-      TEGAD_ENDERECOS: ${TEGAD_ENDERECOS:-https://localhost:5001}
-    volumes:
-      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data          # guarda a CA interna (não apagar: os aparelhos confiam nela)
-      - caddy_config:/config
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-volumes:
-  caddy_data:
-  caddy_config:

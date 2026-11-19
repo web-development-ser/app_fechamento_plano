@@ -32,33 +32,18 @@ Sem `TEST_DATABASE_URL`, apenas os testes do parser de importação rodam; os de
 - Item (SKU) é sempre gravado como texto.
 
 ## Deploy no servidor (Docker)
-O banco PostgreSQL é externo (não sobe no compose). Sobem dois containers: `app` (Flask/gunicorn, interno) e
-`proxy` (Caddy, HTTPS na porta 5001 — necessário para o PWA). No servidor:
+O banco PostgreSQL é externo (não sobe no compose). No servidor:
 ```bash
-cp .env.example .env        # preencher SECRET_KEY, DATABASE_URL e TEGAD_ENDERECOS
-docker compose up -d --build
-docker compose exec app python -m scripts.create_admin   # só na primeira vez
-docker compose logs -f app proxy
+cp .env.example .env        # preencher SECRET_KEY e DATABASE_URL (TEST_DATABASE_URL não é necessário)
+sudo docker compose up -d --build --remove-orphans
+sudo docker compose exec app python -m scripts.create_admin   # só na primeira vez
+sudo docker compose logs -f app
 ```
-- `.env`: `TEGAD_ENDERECOS=https://<ip-do-servidor>:5001` (vários endereços separados por vírgula, ex.: IP e nome).
-- Acesso: `https://<ip-do-servidor>:5001`. Quem entrar por `http://` é redirecionado.
-  Outra porta externa: `APP_PORT=8443 docker compose up -d` (ajuste também o `TEGAD_ENDERECOS`).
-
-### Confiar no certificado (uma vez por aparelho) — obrigatório para instalar o app
-O certificado é emitido por uma CA interna criada pelo Caddy. Baixe `https://<ip-do-servidor>:5001/tegad-ca.crt`
-(o navegador vai avisar sobre o certificado nesse primeiro acesso; prossiga) e instale:
-- **Android:** Configurações → Segurança → Criptografia e credenciais → Instalar certificado → *Certificado CA*.
-- **iPhone/iPad:** abra o arquivo → Ajustes → Perfil baixado → Instalar; depois Ajustes → Geral → Sobre →
-  Ajustes de Confiança de Certificados → ativar a CA "Caddy Local Authority".
-- **Windows:** dois cliques no arquivo → Instalar certificado → Máquina local → *Autoridades de Certificação Raiz Confiáveis*.
-- **macOS:** Acesso às Chaves → importar em *Sistema* → abrir o certificado → Confiar: *Sempre confiar*.
-
-Depois disso, ao abrir `https://<ip-do-servidor>:5001` o navegador oferece **Instalar app** (Chrome/Edge: ícone na
-barra de endereço ou menu ⋮ → Instalar; iPhone: Compartilhar → Adicionar à Tela de Início).
-Não apague o volume `caddy_data`: ele guarda a CA; se for recriado, os aparelhos precisam instalar o novo certificado.
-
-Teste rápido sem certificado (só para homologação, Chrome/Edge): `chrome://flags/#unsafely-treat-insecure-origin-as-secure`
-→ adicionar `http://<ip>:5001` → reiniciar o navegador.
+- Acesso: `http://<ip-do-servidor>:5001` (outra porta: `APP_PORT=8080 docker compose up -d`).
+- PWA (instalar como app / cache offline) só é ativado em **HTTPS**. Servido em HTTP o sistema funciona normalmente,
+  sem a instalação. Teste em homologação (Chrome/Edge): `chrome://flags/#unsafely-treat-insecure-origin-as-secure`
+  → adicionar `http://<ip>:5001` → reiniciar o navegador. Para produção, publicar atrás de um proxy HTTPS com
+  certificado confiável pelos aparelhos (definir com a TI) e usar `TRUST_PROXY=1` e `SESSION_COOKIE_SECURE=1` no `.env`.
 - Na inicialização o container aplica migrations pendentes (`RUN_MIGRATIONS=1`). Ele **não cria o banco**:
   se o banco ainda não existir, rode antes `python -m scripts.setup_db` (local ou `docker compose run --rm app python -m scripts.setup_db`).
 - Healthcheck: `GET /health` → 200 (app + banco ok) ou 503.
