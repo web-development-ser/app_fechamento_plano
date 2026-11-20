@@ -1,4 +1,42 @@
 (function () {
+  // modal do atendimento: aplicar o status só a este item ou a todos os relacionados (mesmo Prog. Orig. + Doc.)
+  document.querySelectorAll("form[data-relacionados]").forEach(function (form) {
+    var dlg = document.getElementById(form.getAttribute("data-modal"));
+    var campo = form.querySelector("input[name=aplicar]");
+    if (!dlg || !campo || typeof dlg.showModal !== "function") return;  // sem suporte: salva só este item
+    form.addEventListener("submit", function (e) {
+      if (campo.value) return;  // escolha já feita
+      e.preventDefault();
+      e.stopImmediatePropagation();  // não bloqueia o botão Salvar enquanto o modal está aberto
+      var sel = form.querySelector("select[name=status]");
+      var alvo = dlg.querySelector("[data-status-escolhido]");
+      if (alvo && sel) alvo.textContent = sel.value ? sel.value : "vazio (sem status)";
+      dlg.showModal();
+    });
+    dlg.querySelectorAll("[data-aplicar]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        campo.value = b.getAttribute("data-aplicar");
+        form.setAttribute("data-enviando", "1");
+        dlg.close();
+        if (form.requestSubmit) form.requestSubmit(); else form.submit();
+      });
+    });
+    var ver = dlg.querySelector("[data-ver-itens]");
+    var lista = dlg.querySelector("[data-lista]");
+    if (ver && lista) {
+      ver.addEventListener("click", function () {
+        lista.hidden = !lista.hidden;
+        ver.setAttribute("aria-expanded", lista.hidden ? "false" : "true");
+      });
+    }
+    dlg.querySelectorAll("[data-modal-fechar]").forEach(function (b) {
+      b.addEventListener("click", function () { dlg.close(); });
+    });
+    dlg.addEventListener("close", function () {
+      if (!form.hasAttribute("data-enviando")) campo.value = "";  // fechou sem escolher: nada é salvo
+    });
+  });
+
   // mostrar/ocultar senha
   document.querySelectorAll("[data-toggle-pass]").forEach(function (btn) {
     btn.addEventListener("click", function () {

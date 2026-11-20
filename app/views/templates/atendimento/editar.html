@@ -48,8 +48,9 @@
   {% endif %}
 </section>
 
-<form class="panel" method="post">
+<form class="panel" method="post"{% if relacionados %} data-relacionados="{{ relacionados|length }}" data-modal="modal-relacionados"{% endif %}>
   <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <input type="hidden" name="aplicar" value="">
   <h2>Informações de atendimento</h2>
   {% set dt = r.dt_recebimento %}
   <div class="grid grid-form">
@@ -77,6 +78,42 @@
   <div class="actions" style="margin-top:12px">
     <button class="btn btn-primary" type="submit"><i data-lucide="save"></i>Salvar</button>
     <a class="btn" href="{{ voltar }}">Voltar</a>
+    {% if relacionados %}<span class="sub"><i data-lucide="link"></i> {{ relacionados|length }} item(ns) relacionado(s) pelo mesmo Prog. Orig. + Doc.</span>{% endif %}
   </div>
+
+  {% if relacionados %}
+  <dialog id="modal-relacionados" class="modal" aria-labelledby="modal-rel-titulo">
+    <div class="modal-topo">
+      <h2 id="modal-rel-titulo">Itens relacionados</h2>
+      <button type="button" class="btn btn-link btn-sm" data-modal-fechar aria-label="Fechar"><i data-lucide="x"></i></button>
+    </div>
+    <p style="margin:0 0 8px">Existem outros <strong>{{ relacionados|length }}</strong> item(ns) com o mesmo
+      Prog. Orig. <strong>{{ r.prog_orig }}</strong> + Doc. <strong>{{ r.doc_orig }}</strong>.</p>
+    <p style="margin:0 0 8px"><strong>A alteração de status deve ser aplicada somente a este item ou a todos os itens relacionados?</strong></p>
+    <p class="sub" style="margin:0 0 10px">Status selecionado: <strong data-status-escolhido>—</strong></p>
+
+    <div class="modal-lista" data-lista hidden>
+      {% for it in relacionados %}
+      <div class="card">
+        <div class="card-top">
+          <strong style="font-size:13px">{{ it.item }}</strong>
+          {% if it.status %}<span class="badge azul">{{ it.status }}</span>{% else %}<span class="badge">Sem status</span>{% endif %}
+        </div>
+        <div class="kv">
+          <div><span>Programa</span>{{ it.programa }}</div>
+          <div><span>Equipto</span>{{ it.equipto or '—' }}</div>
+          {% if it.descricao %}<div style="grid-column:1/-1"><span>Descrição</span>{{ it.descricao }}</div>{% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="modal-acoes">
+      <button type="button" class="btn" data-ver-itens aria-expanded="false"><i data-lucide="list"></i>Ver esses itens</button>
+      <button type="button" class="btn" data-aplicar="este"><i data-lucide="file"></i>Somente este item</button>
+      <button type="button" class="btn btn-primary" data-aplicar="todos"><i data-lucide="files"></i>Todos os itens ({{ relacionados|length + 1 }})</button>
+    </div>
+  </dialog>
+  {% endif %}
 </form>
 {% endblock %}

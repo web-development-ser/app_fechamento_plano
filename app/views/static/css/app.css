@@ -146,6 +146,17 @@ details.panel.mais summary { margin: 0; }
 .aviso-versao[hidden] { display: none; }
 @media (min-width: 640px) { .aviso-versao { left: auto; max-width: 420px; } }
 
+/* modal (atendimento: aplicar status a itens relacionados) */
+dialog.modal { width: min(560px, calc(100vw - 32px)); max-height: 85vh; padding: 14px; border: 1px solid var(--border);
+  border-radius: var(--radius); background: var(--panel); color: var(--text); box-shadow: 0 8px 28px rgba(0,0,0,.18); }
+dialog.modal::backdrop { background: rgba(28,30,33,.45); }
+.modal-topo { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.modal-topo h2 { margin: 0; }
+.modal-lista { display: grid; gap: 6px; max-height: 38vh; overflow: auto; margin-bottom: 10px; }
+.modal-lista[hidden] { display: none; }
+.modal-acoes { display: flex; flex-direction: column; gap: 8px; }
+@media (min-width: 640px) { .modal-acoes { flex-direction: row; flex-wrap: wrap; justify-content: flex-end; } }
+
 /* dashboard: barras horizontais (uma série, cor única) */
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .stat.hero b { font-size: 30px; color: var(--primary); }

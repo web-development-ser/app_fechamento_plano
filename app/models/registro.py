@@ -169,3 +169,25 @@ def contar_pendentes(prog_orig, doc_orig, status_concluidos, ignorar_id=None):
         " AND id IS DISTINCT FROM %s AND (status IS NULL OR NOT (status = ANY(%s)))",
         (prog_orig, doc_orig, ignorar_id, list(status_concluidos)),
     )["n"]
+
+
+def relacionados(prog_orig, doc_orig, excluir_id):
+    """Outros itens com o mesmo Prog. Orig. + Doc. Orig. (sem espaços, sem diferenciar maiúsculas)."""
+    return db.query(
+        "SELECT id, item, programa, descricao, equipto, status FROM agrupamento_registro"
+        " WHERE upper(trim(prog_orig)) = upper(trim(%s)) AND upper(trim(doc_orig)) = upper(trim(%s))"
+        " AND id <> %s ORDER BY id",
+        (prog_orig, doc_orig, excluir_id),
+    )
+
+
+def atualizar_status(ids, status, usuario):
+    """Aplica o mesmo status a vários itens (somente o status + rastreabilidade)."""
+    if not ids:
+        return 0
+    return db.execute(
+        "UPDATE agrupamento_registro SET status = %s, atualizado_em = now(), atualizado_por = %s"
+        " WHERE id = ANY(%s)",
+        (status, usuario["id"], list(ids)),
+    )
+

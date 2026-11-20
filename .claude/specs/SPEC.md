@@ -63,6 +63,18 @@ Origem: `regras_iniciais/2. interface_edição_view.md`
 - Carrega por padrão status vazio; valida todos os campos antes de gravar.
 - Loc. TEGAD nunca vem do formulário: vaga do mapeamento ativo ou, sem mapeamento, o valor já gravado.
 - Ao salvar com Status preenchido e mapeamento ativo, libera a vaga na mesma transação (ver M4).
+- **Status em lote para itens relacionados (regra 10):**
+  - Relacionados = outros itens com o mesmo **Prog. Orig. + Doc. Orig.** (sem espaços, sem diferenciar maiúsculas).
+  - Se houver relacionados, **Salvar** abre um modal: "A alteração de status deve ser aplicada somente a este item
+    ou a todos os itens relacionados?", com **Ver esses itens** (lista no próprio modal), **Somente este item** e
+    **Todos os itens (N)**. Fechar o modal (X/Esc) não salva nada. Sem relacionados, salva direto, sem modal.
+  - **Todos os itens:** copia **somente o status** para os relacionados (com `atualizado_por/em`); narrativa, data de
+    recebimento, Resp. TS7 etc. ficam só no item atual [Assumido]. O status vazio também é copiado se for o escolhido
+    (o modal mostra o status que será aplicado). Itens sem correspondência não são alterados.
+  - Os relacionados são buscados de novo no servidor ao salvar (não confia na lista do navegador); cada item alterado
+    gera auditoria `aplicar_status_relacionado` (status antes/depois + item de origem). Tudo na mesma transação.
+  - Sem JavaScript ou valor desconhecido em `aplicar`: salva **somente este item** (padrão seguro).
+  - A regra de saída da caixa (Disponível/Finalizado) é avaliada depois da aplicação em lote.
 - [Assumido] Filtro adicional de Status (padrão "Vazio", opção "Todos").
 - [Assumido] Todos os perfis podem editar o atendimento.
 - [Assumido] Salvamento manual (botão "Salvar") com mensagem de sucesso/erro; recarrega dados atualizados.
@@ -262,4 +274,7 @@ Origem: `regras_iniciais/07. estoque_consulta_dashboard_pwa.md`
 | Regra 08: filtro Última modificação, status Floco/PS7/Sala de Cortes, filtros das caixas | Concluído — 4 testes |
 | Regra 08: HTTPS para o PWA | **Revertido** em 2026-11-19 (proxy Caddy removido do compose); suporte a proxy (ProxyFix, desligado por padrão) mantido e testado |
 
-Total: 86 testes passando no PostgreSQL (2026-11-19). Pendente: validar os itens [Assumido] com a equipe de Fechamento.
+| Regra 09: retirada de caixa por quem atende | Concluído — 2 testes |
+| Regra 10: status somente neste item / em todos os relacionados | Concluído — 8 testes (servidor); modal em JS não testado em navegador |
+
+Total: 95 testes passando no PostgreSQL (2026-11-20). Pendente: validar os itens [Assumido] com a equipe de Fechamento.

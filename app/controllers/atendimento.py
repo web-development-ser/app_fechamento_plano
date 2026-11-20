@@ -85,6 +85,8 @@ def editar(registro_id):
 
     # PROCV: Prog. Orig. -> Programa, Doc. Orig. -> Documento
     mapeamento = mapeamento_model.buscar_ativo(registro["prog_orig"], registro["doc_orig"])
+    # itens relacionados (mesmo Prog. Orig. + Doc.) para aplicar o status em lote
+    relacionados = registro_model.relacionados(registro["prog_orig"], registro["doc_orig"], registro_id)
 
     if request.method == "POST":
         dados, erros = validar_atendimento(request.form)
@@ -95,15 +97,10 @@ def editar(registro_id):
                 flash(e, "erro")
             registro = {**registro, **dados}
         else:
-            # a caixa sai da vaga quando este item fica Disponível/Finalizado e nenhum outro item
-            # do mesmo Prog. Orig. + Doc. Orig. continua pendente
+            # escolha do modal: "este" (padrão, inclusive sem JavaScript) ou "todos"
+            aplicar_todos = request.form.get("aplicar") == "todos" and bool(relacionados)
             liberar = False
             pendentes = 0
-            if mapeamento is not None and mapeamento_model.status_libera(dados["status"]):
-                pendentes = registro_model.contar_pendentes(
-                    registro["prog_orig"], registro["doc_orig"],
-                    mapeamento_model.STATUS_LIBERAM, ignorar_id=registro_id)
-                liberar = pendentes == 0
             try:
                 registro_model.salvar_atendimento(registro_id, dados, g.user)
                 antes = {k: registro[k] for k in CAMPOS_ATENDIMENTO}
@@ -111,6 +108,21 @@ def editar(registro_id):
                     "atender_item", "agrupamento_registro", registro_id,
                     {"antes": antes, "depois": dados},
                 )
+                if aplicar_todos:
+                    registro_model.atualizar_status([r["id"] for r in relacionados], dados["status"], g.user)
+                    for rel in relacionados:
+                        auditoria.registrar(
+                            "aplicar_status_relacionado", "agrupamento_registro", rel["id"],
+                            {"antes": {"status": rel["status"]}, "depois": {"status": dados["status"]},
+                             "origem_registro_id": registro_id},
+                        )
+                # a caixa sai da vaga quando este item fica Disponível/Finalizado e nenhum outro item
+                # do mesmo Prog. Orig. + Doc. Orig. continua pendente (contado após a aplicação em lote)
+                if mapeamento is not None and mapeamento_model.status_libera(dados["status"]):
+                    pendentes = registro_model.contar_pendentes(
+                        registro["prog_orig"], registro["doc_orig"],
+                        mapeamento_model.STATUS_LIBERAM, ignorar_id=registro_id)
+                    liberar = pendentes == 0
                 if liberar:
                     mapeamento_model.liberar(mapeamento["id"], g.user, registro_id)
                     auditoria.registrar(
@@ -124,6 +136,9 @@ def editar(registro_id):
                 flash("Não foi possível salvar o atendimento. Tente novamente.", "erro")
             else:
                 msg = "Atendimento salvo com sucesso."
+                if aplicar_todos:
+                    msg += (f" Status \"{dados['status'] or 'vazio'}\" aplicado também a "
+                            f"{len(relacionados)} item(ns) relacionado(s).")
                 if mapeamento is not None:
                     est = mapeamento["vaga"] == mapeamento_model.ESTOQUE
                     de_local = "do Estoque" if est else f"da vaga {mapeamento['vaga']}"
@@ -145,6 +160,7 @@ def editar(registro_id):
         r=registro,
         voltar=voltar,
         mapeamento=historico,
+        relacionados=relacionados,
         loc_tegad=mapeamento["vaga"] if mapeamento else registro["loc_tegad"],
         status_opcoes=registro_model.STATUS_OPCOES,
         descrever_turno=mapeamento_model.descrever_turno,
